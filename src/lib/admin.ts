@@ -44,7 +44,7 @@ export async function entrar(email: string, senha: string): Promise<Sessao> {
   if (!senha || senha.length < 4) throw new Error('Informe a senha de acesso.')
 
   /* Um único pedido ao servidor: valida a senha e devolve o token. */
-  const resposta = await rpc<{ ok: boolean; token?: string; motivo?: string }>('admin_entrar', {
+  const resposta = await rpc<{ ok: boolean; token?: string; motivo?: string }>('admin_entrar_publico', {
     p_email: email.trim(),
     p_senha: senha,
   })
@@ -65,7 +65,7 @@ export async function trocarSenha(token: Token, atual: string, nova: string): Pr
 /* Verifica se o token salvo ainda é aceito pelas regras do banco. */
 export async function validarSessao(token: string): Promise<boolean> {
   try {
-    await api<Produto[]>(`/rest/v1/produtos?select=id&limit=1`, { token })
+    await api<Produto[]>(`/rest/v1/produtos?select=id&limit=1`, { token, texto: true })
     return true
   } catch (e) {
     if (e instanceof ErroApi) return false

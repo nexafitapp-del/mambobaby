@@ -5,32 +5,42 @@ export const SUPABASE_KEY = 'sb_publishable_RgMXWlM7Km3ipZ8s5c6jSg_5S6GwVg4'
 
 export class ErroApi extends Error {}
 
-type Opcoes = { metodo?: string; corpo?: unknown; token?: string | null }
+type Opcoes = { metodo?: string; corpo?: unknown; token?: string | null; texto?: boolean }
 
 export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
-  const { metodo = 'GET', corpo, token } = opcoes
+  const { metodo = 'GET', corpo, token, texto: modoTexto } = opcoes
   const headers: Record<string, string> = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }
   headers.Authorization = `Bearer ${token || SUPABASE_KEY}`
 
-  let resposta: Response
-  const controller = new AbortController()
-  const relogio = setTimeout(() => controller.abort(), 15000)
-  try {
-    resposta = await fetch(`${SUPABASE_URL}${caminho}`, {
-      method: metodo,
-      headers,
-      signal: controller.signal,
-      body: corpo === undefined ? undefined : JSON.stringify(corpo),
-    })
-  } catch (erro) {
-    const abortado = (erro as { name?: string } | null)?.name === 'AbortError'
+  let resposta: Response | null = null
+  let falha: unknown = null
+  /* Duas tentativas em rotas diferentes: se o primeiro caminho for barrado
+     (rede, proxy, bloqueio), o segundo ainda pode funcionar. */
+  for (let tentativa = 0; tentativa < 2 && !resposta; tentativa++) {
+    const controller = new AbortController()
+    const relogio = setTimeout(() => controller.abort(), 15000)
+    try {
+      resposta = await fetch(`${SUPABASE_URL}${caminho}`, {
+        method: modoTexto && tentativa === 1 ? 'POST' : metodo,
+        headers: modoTexto && tentativa === 1 ? { ...headers, 'x-http-method-override': 'GET' } : headers,
+        signal: controller.signal,
+        body: modoTexto && tentativa === 1 ? '{}' : corpo === undefined ? undefined : JSON.stringify(corpo),
+      })
+    } catch (erro) {
+      falha = erro
+      await new Promise((r) => setTimeout(r, 400))
+    } finally {
+      clearTimeout(relogio)
+    }
+  }
+
+  if (!resposta) {
+    const abortado = (falha as { name?: string } | null)?.name === 'AbortError'
     throw new ErroApi(
       abortado
         ? 'O servidor demorou demais para responder. Tente novamente em alguns segundos.'
-        : 'Não consegui falar com o servidor. Verifique sua conexão (ou bloqueador de anúncios/VPN) e tente de novo.',
+        : 'Não foi possível conectar ao servidor de dados. Verifique sua internet e tente novamente.',
     )
-  } finally {
-    clearTimeout(relogio)
   }
 
   const texto = await resposta.text()

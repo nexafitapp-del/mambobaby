@@ -1,6 +1,7 @@
 import { ArrowRight, BadgeCheck, CreditCard, Droplets, Gift, Heart, PackageCheck, ShieldCheck, Sparkles, Star, Truck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Boia } from '@/components/Boia'
+import { Layout } from '@/components/Layout'
 import { Reveal } from '@/components/Reveal'
 import { Button } from '@/components/ui/button'
 import { brl, calcular, loja } from '@/lib/loja'

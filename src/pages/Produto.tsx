@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import { BadgeCheck, Check, CreditCard, Gift, PackageCheck, ShieldCheck, Star, Tag, Truck } from 'lucide-react'
+import { BadgeCheck, Check, CreditCard, Gift, Lock, PackageCheck, ShieldCheck, Star, Tag, Truck, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Boia } from '@/components/Boia'
+import { Checkout, dadosVazios, validarDados, type DadosCliente } from '@/components/Checkout'
 import { Layout } from '@/components/Layout'
 import { Reveal } from '@/components/Reveal'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,8 @@ export default function Produto() {
   const [sel, setSel] = useState('familia')
   const [cupom, setCupom] = useState('')
   const [aplicado, setAplicado] = useState(0)
+  const [dados, setDados] = useState<DadosCliente>(dadosVazios)
+  const [revisar, setRevisar] = useState(false)
   const oferta = loja.ofertas.find((o) => o.id === sel) ?? loja.ofertas[0]
   const c = calcular(oferta.qtd, oferta.desconto, aplicado)
   const indice = loja.ofertas.findIndex((o) => o.id === oferta.id)
@@ -28,6 +31,19 @@ export default function Produto() {
       setAplicado(0)
       toast.error('Cupom inválido ou expirado.')
     }
+  }
+
+  function finalizar() {
+    const erro = validarDados(dados)
+    if (erro) {
+      setRevisar(true)
+      toast.error('Faltam dados para a entrega.', { description: erro })
+      return
+    }
+    setRevisar(false)
+    toast.info('Checkout com Mercado Pago em breve.', {
+      description: `Dados de entrega salvos para ${dados.nome}. O pagamento será liberado após a conexão das credenciais seguras.`,
+    })
   }
 
   return (
@@ -161,6 +177,21 @@ export default function Produto() {
 
           <Reveal delay={200} className="mt-6">
             <div className="rounded-3xl border border-sky-100 bg-white p-5 shadow-xl shadow-sky-900/5 sm:p-6">
+              <div className="mb-5 flex items-center gap-2 border-b border-dashed border-sky-100 pb-4">
+                <span className="grid size-8 place-items-center rounded-full bg-orange-100 text-orange-600">
+                  <UserRound className="size-4" aria-hidden />
+                </span>
+                <div>
+                  <p className="text-sm font-black text-sky-950">Dados para entrega</p>
+                  <p className="text-[11px] text-sky-900/55">Preencha antes de concluir a compra</p>
+                </div>
+              </div>
+              <Checkout dados={dados} onChange={setDados} />
+            </div>
+          </Reveal>
+
+          <Reveal delay={200} className="mt-6">
+            <div className={cn('rounded-3xl border bg-white p-5 shadow-xl shadow-sky-900/5 sm:p-6', revisar ? 'border-orange-300 ring-2 ring-orange-200' : 'border-sky-100')}>
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-xs font-bold text-sky-900/50">Total com {oferta.nome}{aplicado > 0 ? ` + cupom ${aplicado}%` : ''}</p>
@@ -178,10 +209,13 @@ export default function Produto() {
               <Button
                 size="lg"
                 className="mt-5 h-13 w-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400 text-sm font-black tracking-wide text-white shadow-lg shadow-orange-500/25 transition-transform hover:scale-[1.01] active:scale-[0.99]"
-                onClick={() => toast.info('Checkout com Mercado Pago em breve.', { description: 'O pagamento será liberado após a conexão das credenciais seguras.' })}
+                onClick={finalizar}
               >
                 QUERO MINHA MAMBOBABY
               </Button>
+              <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] font-bold text-sky-900/55">
+                <Lock className="size-3" aria-hidden /> Você só paga depois de confirmar a entrega
+              </p>
               <p className="mt-3 flex items-center justify-center gap-1.5 text-[11px] text-sky-900/55">
                 <CreditCard className="size-3.5" aria-hidden /> Pix, cartão e boleto via Mercado Pago
               </p>

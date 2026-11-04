@@ -40,35 +40,20 @@ export function sair() {
   }
 }
 
-export async function loginTravado(): Promise<boolean> {
-  try {
-    return await rpc<boolean>('login_travado')
-  } catch {
-    return false
-  }
-}
-
 export async function entrar(email: string, senha: string): Promise<Sessao> {
-  if (await loginTravado()) {
-    throw new Error('Muitas tentativas seguidas. Aguarde 15 minutos e tente novamente.')
+  if (!senha || senha.length < 4) throw new Error('Informe a senha de acesso.')
+
+  /* Um único pedido ao servidor: valida a senha e devolve o token. */
+  const resposta = await rpc<{ ok: boolean; token?: string; motivo?: string }>('admin_entrar', {
+    p_email: email.trim(),
+    p_senha: senha,
+  })
+
+  if (!resposta || resposta.ok !== true || !resposta.token) {
+    throw new Error('E-mail ou senha incorretos.')
   }
 
-  let token: string | null
-  try {
-    token = await rpc<string | null>('admin_login', { p_email: email.trim(), p_senha: senha })
-  } catch (e) {
-    if (e instanceof ErroApi) throw e
-    throw new Error('Não consegui falar com o servidor. Verifique sua conexão e tente de novo.')
-  } finally {
-    try {
-      await rpc<null>('registrar_login', { p_ok: Boolean(token) })
-    } catch {
-      /* registro de tentativas é opcional */
-    }
-  }
-
-  if (!token) throw new Error('E-mail ou senha incorretos.')
-  const sessao = { email: email.trim().toLowerCase(), token }
+  const sessao = { email: email.trim().toLowerCase(), token: resposta.token }
   salvarSessao(sessao)
   return sessao
 }
@@ -210,7 +195,7 @@ export type ConfigLoja = {
 }
 
 export const buscarConfig = () =>
-  api<ConfigLoja[]>(`${tabela('configuracoes')}?select=*&id=eq.1`) .then((r) => r[0])
+  api<ConfigLoja[]>(`${tabela('configuracoes')}?select=*&id=eq.1`).then((r) => r[0])
 
 export const salvarConfig = (token: Token, c: Partial<ConfigLoja>) =>
   api<ConfigLoja[]>(`${tabela('configuracoes')}?id=eq.1`, {

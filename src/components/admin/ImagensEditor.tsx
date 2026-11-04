@@ -85,7 +85,16 @@ export function ImagensEditor({ imagens, onChange, erro }: Props) {
         <p className="mt-2 text-[11px] text-sky-900/55">Arraste as imagens aqui ou toque no botão. JPG, PNG, WEBP ou AVIF, até 5 MB cada.</p>
       </div>
 
-      {(falha || erro) && <p className="rounded-xl bg-red-50 p-2.5 text-[11px] font-bold text-red-700 ring-1 ring-red-200">{falha || erro}</p>}
+      {(falha || erro) && (
+        <div className="grid gap-1.5 rounded-xl bg-red-50 p-2.5 ring-1 ring-red-200">
+          <p className="text-[11px] font-bold text-red-700">{falha || erro}</p>
+          {falha && (
+            <p className="text-[10px] font-medium text-red-700/70">
+              Se a foto passar de 5 MB, reduza antes de enviar. O envio segue uma a um: as que derem certo entram na lista.
+            </p>
+          )}
+        </div>
+      )}
 
       {imagens.length > 0 && (
         <ul className="grid grid-cols-3 gap-2 sm:grid-cols-4">

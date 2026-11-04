@@ -5,30 +5,29 @@ export const SUPABASE_KEY = 'sb_publishable_RgMXWlM7Km3ipZ8s5c6jSg_5S6GwVg4'
 
 export class ErroApi extends Error {}
 
-type Opcoes = { metodo?: string; corpo?: unknown; token?: string | null; texto?: boolean }
+type Opcoes = { metodo?: string; corpo?: unknown; token?: string | null }
 
 export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
-  const { metodo = 'GET', corpo, token, texto: modoTexto } = opcoes
+  const { metodo = 'GET', corpo, token } = opcoes
   const headers: Record<string, string> = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }
   headers.Authorization = `Bearer ${token || SUPABASE_KEY}`
 
   let resposta: Response | null = null
   let falha: unknown = null
-  /* Duas tentativas em rotas diferentes: se o primeiro caminho for barrado
-     (rede, proxy, bloqueio), o segundo ainda pode funcionar. */
+  /* Duas tentativas seguidas: cobre oscilação momentânea de rede. */
   for (let tentativa = 0; tentativa < 2 && !resposta; tentativa++) {
     const controller = new AbortController()
     const relogio = setTimeout(() => controller.abort(), 15000)
     try {
       resposta = await fetch(`${SUPABASE_URL}${caminho}`, {
-        method: modoTexto && tentativa === 1 ? 'POST' : metodo,
-        headers: modoTexto && tentativa === 1 ? { ...headers, 'x-http-method-override': 'GET' } : headers,
+        method: metodo,
+        headers,
         signal: controller.signal,
-        body: modoTexto && tentativa === 1 ? '{}' : corpo === undefined ? undefined : JSON.stringify(corpo),
+        body: corpo === undefined ? undefined : JSON.stringify(corpo),
       })
     } catch (erro) {
       falha = erro
-      await new Promise((r) => setTimeout(r, 400))
+      await new Promise((r) => setTimeout(r, 300))
     } finally {
       clearTimeout(relogio)
     }
@@ -39,7 +38,7 @@ export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Pr
     throw new ErroApi(
       abortado
         ? 'O servidor demorou demais para responder. Tente novamente em alguns segundos.'
-        : 'Não foi possível conectar ao servidor de dados. Verifique sua internet e tente novamente.',
+        : 'Sem resposta do servidor de dados. Confira a conexão e toque em tentar de novo.',
     )
   }
 

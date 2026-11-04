@@ -13,16 +13,24 @@ export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Pr
   headers.Authorization = `Bearer ${token || SUPABASE_KEY}`
 
   let resposta: Response
+  const controller = new AbortController()
+  const relogio = setTimeout(() => controller.abort(), 15000)
   try {
     resposta = await fetch(`${SUPABASE_URL}${caminho}`, {
       method: metodo,
       headers,
+      signal: controller.signal,
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
     })
-  } catch {
+  } catch (erro) {
+    const abortado = (erro as { name?: string } | null)?.name === 'AbortError'
     throw new ErroApi(
-      'Não consegui falar com o servidor. Verifique sua conexão (ou bloqueador de anúncios/VPN) e tente de novo.',
+      abortado
+        ? 'O servidor demorou demais para responder. Tente novamente em alguns segundos.'
+        : 'Não consegui falar com o servidor. Verifique sua conexão (ou bloqueador de anúncios/VPN) e tente de novo.',
     )
+  } finally {
+    clearTimeout(relogio)
   }
 
   const texto = await resposta.text()

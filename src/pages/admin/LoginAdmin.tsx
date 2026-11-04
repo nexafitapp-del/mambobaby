@@ -24,7 +24,7 @@ export function LoginAdmin({ onEntrar }: { onEntrar: (email: string) => void }) 
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Não foi possível entrar.'
       setErro(
-        /load failed|failed to fetch|networkerror|fetch/i.test(msg)
+        /load failed|failed to fetch|networkerror/i.test(msg)
           ? 'Não consegui falar com o servidor. Verifique sua internet, desative bloqueadores de anúncios para este site e tente novamente.'
           : msg,
       )
@@ -55,7 +55,16 @@ export function LoginAdmin({ onEntrar }: { onEntrar: (email: string) => void }) 
         </div>
 
         {erro && (
-          <p role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700 ring-1 ring-red-200">{erro}</p>
+          <div role="alert" className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700 ring-1 ring-red-200">
+            <p>{erro}</p>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="mt-2 font-black text-red-800 underline underline-offset-2 hover:text-red-900"
+            >
+              Recarregar a página
+            </button>
+          </div>
         )}
 
         <button

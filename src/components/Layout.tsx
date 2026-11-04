@@ -138,7 +138,8 @@ export function Layout({ children }: { children: React.ReactNode }) {
         </div>
         <div className="border-t border-sky-900">
           <p className="mx-auto max-w-6xl px-6 py-5 text-xs text-sky-400">
-            © {new Date().getFullYear()} {loja.nome}. Todos os direitos reservados. Preços e ofertas sujeitos a alteração.
+            © {new Date().getFullYear()} {loja.nome}. Todos os direitos reservados. Preços e ofertas sujeitos a alteração.{' '}
+            <Link to="/admin" className="font-bold text-sky-300/70 transition-colors hover:text-sky-100">Painel</Link>
           </p>
         </div>
       </footer>

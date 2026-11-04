@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout'
 import Inicio from '@/pages/Inicio'
 import Produto from '@/pages/Produto'
 import Politicas from '@/pages/Politicas'
+import Admin from '@/pages/Admin'
 
 function NaoEncontrada() {
   return (
@@ -28,6 +29,7 @@ export default function App() {
         <Route path="/" element={<Inicio />} />
         <Route path="/produto" element={<Produto />} />
         <Route path="/politicas" element={<Politicas />} />
+        <Route path="/admin/*" element={<Admin />} />
         <Route path="*" element={<NaoEncontrada />} />
       </Routes>
     </BrowserRouter>

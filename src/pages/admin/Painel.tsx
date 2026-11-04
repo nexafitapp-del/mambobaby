@@ -1,13 +1,14 @@
 import { useState } from 'react'
-import { LogOut, Package, Receipt, Settings, Store } from 'lucide-react'
+import { KeyRound, LogOut, Package, Receipt, Settings, Store } from 'lucide-react'
 import { sair, sessaoSalva } from '@/lib/admin'
 import { cn } from '@/lib/utils'
 import { ProdutosAdmin } from '@/pages/admin/ProdutosAdmin'
 import { PedidosAdmin } from '@/pages/admin/PedidosAdmin'
 import { ConfigAdmin } from '@/pages/admin/ConfigAdmin'
+import { SenhaAdmin } from '@/pages/admin/SenhaAdmin'
 
 export function Painel({ email, onSair }: { email: string; onSair: () => void }) {
-  const [aba, setAba] = useState<'produtos' | 'pedidos' | 'ajustes'>('produtos')
+  const [aba, setAba] = useState<'produtos' | 'pedidos' | 'ajustes' | 'senha'>('produtos')
   const tokenAtual = () => sessaoSalva()?.token ?? ''
 
   function deslogar() {
@@ -19,6 +20,7 @@ export function Painel({ email, onSair }: { email: string; onSair: () => void })
     { id: 'produtos' as const, label: 'Produtos e kits', icon: Package },
     { id: 'pedidos' as const, label: 'Pedidos', icon: Receipt },
     { id: 'ajustes' as const, label: 'Ajustes', icon: Settings },
+    { id: 'senha' as const, label: 'Senha', icon: KeyRound },
   ]
 
   return (
@@ -60,6 +62,7 @@ export function Painel({ email, onSair }: { email: string; onSair: () => void })
         {aba === 'produtos' && <ProdutosAdmin />}
         {aba === 'pedidos' && <PedidosAdmin />}
         {aba === 'ajustes' && <ConfigAdmin token={tokenAtual()} />}
+        {aba === 'senha' && <SenhaAdmin token={tokenAtual()} />}
       </main>
     </div>
   )

@@ -1,4 +1,4 @@
-import { api, rpc, SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase'
+import { api, ErroApi, rpc, SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase'
 
 const CHAVE = 'mambobaby.admin.sessao'
 
@@ -40,12 +40,52 @@ export function sair() {
   }
 }
 
+export async function loginTravado(): Promise<boolean> {
+  try {
+    return await rpc<boolean>('login_travado')
+  } catch {
+    return false
+  }
+}
+
 export async function entrar(email: string, senha: string): Promise<Sessao> {
-  const token = await rpc<string | null>('admin_login', { p_email: email.trim(), p_senha: senha })
+  if (await loginTravado()) {
+    throw new Error('Muitas tentativas seguidas. Aguarde 15 minutos e tente novamente.')
+  }
+
+  let token: string | null
+  try {
+    token = await rpc<string | null>('admin_login', { p_email: email.trim(), p_senha: senha })
+  } catch (e) {
+    if (e instanceof ErroApi) throw e
+    throw new Error('Não consegui falar com o servidor. Verifique sua conexão e tente de novo.')
+  } finally {
+    try {
+      await rpc<null>('registrar_login', { p_ok: Boolean(token) })
+    } catch {
+      /* registro de tentativas é opcional */
+    }
+  }
+
   if (!token) throw new Error('E-mail ou senha incorretos.')
   const sessao = { email: email.trim().toLowerCase(), token }
   salvarSessao(sessao)
   return sessao
+}
+
+export async function trocarSenha(token: Token, atual: string, nova: string): Promise<void> {
+  await rpc<boolean>('redefinir_senha_admin', { p_atual: atual, p_nova: nova }, token)
+}
+
+/* Verifica se o token salvo ainda é aceito pelas regras do banco. */
+export async function validarSessao(token: string): Promise<boolean> {
+  try {
+    await api<Produto[]>(`/rest/v1/produtos?select=id&limit=1`, { token })
+    return true
+  } catch (e) {
+    if (e instanceof ErroApi) return false
+    return true
+  }
 }
 
 export type Produto = {
@@ -74,6 +114,12 @@ export type Oferta = {
 type Token = string
 
 const tabela = (nome: string) => `/rest/v1/${nome}`
+
+export const listarProdutosPublico = () =>
+  api<Produto[]>(`${tabela('produtos')}?select=*&ativo=eq.true&order=criado_em.desc`)
+
+export const listarOfertasPublico = () =>
+  api<Oferta[]>(`${tabela('ofertas')}?select=*&ativo=eq.true&order=ordem.asc`)
 
 export const listarProdutos = (token: Token) =>
   api<Produto[]>(`${tabela('produtos')}?select=*&order=criado_em.desc`, { token })

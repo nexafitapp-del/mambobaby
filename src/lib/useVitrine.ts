@@ -1,6 +1,6 @@
 // Carrega o catálogo do banco (com reserva no arquivo local).
 import { useEffect, useState } from 'react'
-import { carregarVitrine, produtoLocal, type ProdutoVitrine, type Vitrine } from '@/lib/catalogo'
+import { carregarVitrine, produtosLocais, type ProdutoVitrine, type Vitrine } from '@/lib/catalogo'
 
 type Resultado = { produtos: ProdutoVitrine[]; origem: 'banco' | 'local' }
 
@@ -34,7 +34,7 @@ export function useVitrine(): Vitrine & { recarregar: () => void } {
   }, [tentativa])
 
   return {
-    produtos: dados?.produtos ?? [produtoLocal],
+    produtos: dados?.produtos ?? produtosLocais,
     carregando,
     origem: dados?.origem ?? 'local',
     recarregar: () => {

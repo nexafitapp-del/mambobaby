@@ -12,11 +12,18 @@ export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Pr
   const headers: Record<string, string> = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }
   headers.Authorization = `Bearer ${token || SUPABASE_KEY}`
 
-  const resposta = await fetch(`${SUPABASE_URL}${caminho}`, {
-    method: metodo,
-    headers,
-    body: corpo === undefined ? undefined : JSON.stringify(corpo),
-  })
+  let resposta: Response
+  try {
+    resposta = await fetch(`${SUPABASE_URL}${caminho}`, {
+      method: metodo,
+      headers,
+      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+    })
+  } catch {
+    throw new ErroApi(
+      'Não consegui falar com o servidor. Verifique sua conexão (ou bloqueador de anúncios/VPN) e tente de novo.',
+    )
+  }
 
   const texto = await resposta.text()
   let dados: unknown = null

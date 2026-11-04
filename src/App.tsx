@@ -4,7 +4,7 @@ import { Layout } from '@/components/Layout'
 import Inicio from '@/pages/Inicio'
 import Produto from '@/pages/Produto'
 import Politicas from '@/pages/Politicas'
-import Admin from '@/pages/Admin'
+import { Admin } from '@/pages/Admin'
 
 function NaoEncontrada() {
   return (

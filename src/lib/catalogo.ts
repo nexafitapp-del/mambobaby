@@ -33,6 +33,8 @@ export const produtoLocal: ProdutoVitrine = {
   kits: OFERTAS_LOCAIS,
 }
 
+export const produtosLocais: ProdutoVitrine[] = [produtoLocal]
+
 export function urlImagem(caminho: string) {
   if (/^https?:\/\//i.test(caminho)) return caminho
   return `${SUPABASE_URL}/storage/v1/object/public/produtos/${caminho.split('/').map(encodeURIComponent).join('/')}`
@@ -63,10 +65,10 @@ export async function carregarVitrine(): Promise<{ produtos: ProdutoVitrine[]; o
       api<OfertaDb[]>('/rest/v1/ofertas?select=*&ativo=eq.true&order=ordem.asc'),
     ])
     const lista = montar(ps, os)
-    if (!lista.length) return { produtos: [produtoLocal], origem: 'local' }
+    if (!lista.length) return { produtos: produtosLocais, origem: 'local' }
     return { produtos: lista, origem: 'banco' }
   } catch {
-    return { produtos: [produtoLocal], origem: 'local' }
+    return { produtos: produtosLocais, origem: 'local' }
   }
 }
 

@@ -22,7 +22,12 @@ export function LoginAdmin({ onEntrar }: { onEntrar: (email: string) => void }) 
       onEntrar(sessao.email)
       navigate('/admin', { replace: true })
     } catch (e) {
-      setErro(e instanceof Error ? e.message : 'Não foi possível entrar.')
+      const msg = e instanceof Error ? e.message : 'Não foi possível entrar.'
+      setErro(
+        /load failed|failed to fetch|networkerror|fetch/i.test(msg)
+          ? 'Não consegui falar com o servidor. Verifique sua internet, desative bloqueadores de anúncios para este site e tente novamente.'
+          : msg,
+      )
     } finally {
       setCarregando(false)
     }

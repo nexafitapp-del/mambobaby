@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 
 type Props = {
-  token: string
   produto: Produto
   ofertas: Oferta[]
   onMudou: () => Promise<void> | void
@@ -17,7 +16,7 @@ const num = (v: string) => {
   return Number.isFinite(n) ? n : 0
 }
 
-export function OfertasEditor({ token, produto, ofertas, onMudou }: Props) {
+export function OfertasEditor({ produto, ofertas, onMudou }: Props) {
   const [nome, setNome] = useState('')
   const [qtd, setQtd] = useState('1')
   const [desconto, setDesconto] = useState('0')
@@ -32,7 +31,7 @@ export function OfertasEditor({ token, produto, ofertas, onMudou }: Props) {
     if (num(qtd) < 1) { setErro('A quantidade deve ser pelo menos 1.'); return }
     setSalvando(true)
     try {
-      await criarOferta(token, {
+      await criarOferta({
         produto_id: produto.id,
         nome: nome.trim(),
         qtd: Math.round(num(qtd)),
@@ -52,7 +51,7 @@ export function OfertasEditor({ token, produto, ofertas, onMudou }: Props) {
 
   async function remover(o: Oferta) {
     try {
-      await excluirOferta(token, o.id)
+      await excluirOferta(o.id)
       await onMudou()
     } catch {
       setErro('Não foi possível excluir este kit.')
@@ -61,7 +60,7 @@ export function OfertasEditor({ token, produto, ofertas, onMudou }: Props) {
 
   async function alternarDestaque(o: Oferta) {
     try {
-      await atualizarOferta(token, o.id, { destaque: !o.destaque })
+      await atualizarOferta(o.id, { destaque: !o.destaque })
       await onMudou()
     } catch {
       setErro('Não foi possível atualizar o destaque.')

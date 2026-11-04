@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Loader2, Receipt } from 'lucide-react'
 import { api, ErroApi } from '@/lib/supabase'
-import { sessaoSalva } from '@/lib/admin'
 import { brl } from '@/lib/loja'
 
 type Pedido = {
@@ -18,9 +17,7 @@ export function PedidosAdmin() {
   const [erro, setErro] = useState('')
 
   useEffect(() => {
-    const token = sessaoSalva()?.token
-    if (!token) return
-    api<Pedido[]>('/rest/v1/pedidos?select=id,status,total,criado_em,cliente_id&order=criado_em.desc&limit=50', { token })
+    api<Pedido[]>('/rest/v1/pedidos?select=id,status,total,criado_em,cliente_id&order=criado_em.desc&limit=50')
       .then(setPedidos)
       .catch((e) => setErro(e instanceof ErroApi ? e.message : 'Não foi possível carregar os pedidos.'))
       .finally(() => setCarregando(false))
@@ -37,7 +34,7 @@ export function PedidosAdmin() {
         <div className="rounded-3xl border border-sky-100 bg-white p-8 text-center">
           <span className="mx-auto grid size-12 place-items-center rounded-2xl bg-sky-100 text-sky-700"><Receipt className="size-6" aria-hidden /></span>
           <p className="mt-3 font-black text-sky-950">Nenhum pedido ainda</p>
-          <p className="mt-1 text-sm text-sky-900/60">Quando a loja começar a vender, os pedidos aparecem aqui.</p>
+          <p className="mt-1 text-sm text-sky-900/60">Quando a loja começar a vender, os pedidos aparecem aqui — e a lista só é liberada depois que o painel voltar a exigir senha.</p>
         </div>
       ) : (
         <ul className="grid gap-2">

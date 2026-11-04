@@ -7,7 +7,6 @@ import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 
 type Props = {
-  token: string
   produto?: Produto
   onSalvar: (dados: { nome: string; descricao: string; preco: number; preco_original: number | null; ativo: boolean; imagens: string[] }) => Promise<void>
   onCancelar: () => void
@@ -18,7 +17,7 @@ const numero = (v: string) => {
   return Number.isFinite(n) ? n : 0
 }
 
-export function ProdutoForm({ token, produto, onSalvar, onCancelar }: Props) {
+export function ProdutoForm({ produto, onSalvar, onCancelar }: Props) {
   const [nome, setNome] = useState(produto?.nome ?? '')
   const [descricao, setDescricao] = useState(produto?.descricao ?? '')
   const [preco, setPreco] = useState(produto ? String(produto.preco) : '')
@@ -83,7 +82,7 @@ export function ProdutoForm({ token, produto, onSalvar, onCancelar }: Props) {
         </div>
       </div>
 
-      <ImagensEditor token={token} imagens={imagens} onChange={setImagens} />
+      <ImagensEditor imagens={imagens} onChange={setImagens} />
 
       <label className="inline-flex items-center gap-2 text-xs font-bold text-sky-900/80">
         <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} className="size-4 accent-sky-600" />

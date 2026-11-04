@@ -1,26 +1,17 @@
 import { useState } from 'react'
-import { KeyRound, LogOut, Package, Receipt, Settings, Store } from 'lucide-react'
-import { sair, sessaoSalva } from '@/lib/admin'
+import { AlertTriangle, Package, Receipt, Settings, Store } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { ProdutosAdmin } from '@/pages/admin/ProdutosAdmin'
 import { PedidosAdmin } from '@/pages/admin/PedidosAdmin'
 import { ConfigAdmin } from '@/pages/admin/ConfigAdmin'
-import { SenhaAdmin } from '@/pages/admin/SenhaAdmin'
 
-export function Painel({ email, onSair }: { email: string; onSair: () => void }) {
-  const [aba, setAba] = useState<'produtos' | 'pedidos' | 'ajustes' | 'senha'>('produtos')
-  const tokenAtual = () => sessaoSalva()?.token ?? ''
-
-  function deslogar() {
-    sair()
-    onSair()
-  }
+export function Painel() {
+  const [aba, setAba] = useState<'produtos' | 'pedidos' | 'ajustes'>('produtos')
 
   const abas = [
     { id: 'produtos' as const, label: 'Produtos e kits', icon: Package },
     { id: 'pedidos' as const, label: 'Pedidos', icon: Receipt },
     { id: 'ajustes' as const, label: 'Ajustes', icon: Settings },
-    { id: 'senha' as const, label: 'Senha', icon: KeyRound },
   ]
 
   return (
@@ -29,16 +20,11 @@ export function Painel({ email, onSair }: { email: string; onSair: () => void })
         <div className="mx-auto flex max-w-5xl flex-wrap items-center justify-between gap-3 px-4 py-3">
           <div className="min-w-0">
             <p className="text-sm font-black text-sky-950">MamboBaby · Painel</p>
-            <p className="truncate text-[11px] text-sky-900/55">{email}</p>
+            <p className="truncate text-[11px] text-sky-900/55">Acesso aberto, sem senha</p>
           </div>
-          <div className="flex items-center gap-2">
-            <a href="/" className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 px-3.5 py-2 text-xs font-bold text-sky-800 hover:bg-sky-50">
-              <Store className="size-3.5" aria-hidden /> Ver loja
-            </a>
-            <button type="button" onClick={deslogar} className="inline-flex items-center gap-1.5 rounded-full bg-sky-900 px-3.5 py-2 text-xs font-bold text-white hover:bg-sky-800">
-              <LogOut className="size-3.5" aria-hidden /> Sair
-            </button>
-          </div>
+          <a href="/" className="inline-flex items-center gap-1.5 rounded-full border border-sky-200 px-3.5 py-2 text-xs font-bold text-sky-800 hover:bg-sky-50">
+            <Store className="size-3.5" aria-hidden /> Ver loja
+          </a>
         </div>
         <nav className="mx-auto flex max-w-5xl gap-1 px-4 pb-2" aria-label="Seções do painel">
           {abas.map(({ id, label, icon: Icon }) => (
@@ -58,11 +44,15 @@ export function Painel({ email, onSair }: { email: string; onSair: () => void })
         </nav>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 py-6">
+      <main className="mx-auto grid max-w-5xl gap-4 px-4 py-6">
+        <p className="flex items-start gap-2 rounded-2xl bg-amber-50 p-3 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
+          <AlertTriangle className="mt-0.5 size-3.5 shrink-0" aria-hidden />
+          <span>Painel temporariamente aberto: qualquer pessoa com o link consegue cadastrar produtos. Assim que terminar, me peça para fechar o acesso com senha novamente.</span>
+        </p>
+
         {aba === 'produtos' && <ProdutosAdmin />}
         {aba === 'pedidos' && <PedidosAdmin />}
-        {aba === 'ajustes' && <ConfigAdmin token={tokenAtual()} />}
-        {aba === 'senha' && <SenhaAdmin token={tokenAtual()} />}
+        {aba === 'ajustes' && <ConfigAdmin />}
       </main>
     </div>
   )

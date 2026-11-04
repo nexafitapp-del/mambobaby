@@ -5,13 +5,12 @@ import { urlImagem } from '@/lib/catalogo'
 import { cn } from '@/lib/utils'
 
 type Props = {
-  token: string
   imagens: string[]
   onChange: (imagens: string[]) => void
   erro?: string
 }
 
-export function ImagensEditor({ token, imagens, onChange, erro }: Props) {
+export function ImagensEditor({ imagens, onChange, erro }: Props) {
   const input = useRef<HTMLInputElement>(null)
   const [enviando, setEnviando] = useState(0)
   const [falha, setFalha] = useState('')
@@ -26,7 +25,7 @@ export function ImagensEditor({ token, imagens, onChange, erro }: Props) {
     const erros: string[] = []
     for (const arquivo of lista) {
       try {
-        novas.push(await enviarImagem(token, arquivo))
+        novas.push(await enviarImagem(arquivo))
       } catch (e) {
         erros.push(e instanceof Error ? e.message : 'Falha no envio.')
       } finally {
@@ -41,7 +40,7 @@ export function ImagensEditor({ token, imagens, onChange, erro }: Props) {
   async function excluir(caminho: string) {
     onChange(imagens.filter((i) => i !== caminho))
     try {
-      await removerImagem(token, caminho)
+      await removerImagem(caminho)
     } catch {
       /* o registro já saiu da lista; o arquivo pode ficar órfão */
     }

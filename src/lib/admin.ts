@@ -1,81 +1,17 @@
-import { api, ErroApi, rpc, SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase'
-
-const CHAVE = 'mambobaby.admin.sessao'
-
-export type Sessao = { email: string; token: string }
+import { api, rpc, SUPABASE_KEY, SUPABASE_URL } from '@/lib/supabase'
 
 export const supabaseConfigurado = true
 
-export function sessaoSalva(): Sessao | null {
-  try {
-    const cru = localStorage.getItem(CHAVE)
-    if (!cru) return null
-    const s = JSON.parse(cru) as Sessao
-    if (!s?.token || !s?.email) return null
-    const parte = s.token.split('.')[1]
-    const exp = JSON.parse(atob(parte.replace(/-/g, '+').replace(/_/g, '/'))).exp as number
-    if (exp * 1000 < Date.now()) {
-      localStorage.removeItem(CHAVE)
-      return null
-    }
-    return s
-  } catch {
-    return null
-  }
-}
+/* Modo painel aberto: sem e-mail e sem senha. O acesso é feito com a chave
+   publicável do projeto e as regras do banco liberam o catálogo. */
+export const TOKEN_PAINEL = SUPABASE_KEY
 
-export function salvarSessao(s: Sessao) {
-  try {
-    localStorage.setItem(CHAVE, JSON.stringify(s))
-  } catch {
-    /* armazenamento indisponível */
-  }
-}
-
-export function sair() {
-  try {
-    localStorage.removeItem(CHAVE)
-  } catch {
-    /* armazenamento indisponível */
-  }
-}
-
-export async function entrar(email: string, senha: string): Promise<Sessao> {
-  if (!senha || senha.length < 4) throw new Error('Informe a senha de acesso.')
-
-  /* Um único pedido ao servidor: valida a senha e devolve o token. */
-  const resposta = await rpc<{ ok: boolean; token?: string; motivo?: string }>('admin_entrar_publico', {
-    p_email: email.trim(),
-    p_senha: senha,
-  })
-
-  if (!resposta || resposta.ok !== true || !resposta.token) {
-    throw new Error('E-mail ou senha incorretos.')
-  }
-
-  const sessao = { email: email.trim().toLowerCase(), token: resposta.token }
-  salvarSessao(sessao)
-  return sessao
-}
-
-export async function trocarSenha(token: Token, atual: string, nova: string): Promise<void> {
-  await rpc<boolean>('redefinir_senha_admin', { p_atual: atual, p_nova: nova }, token)
-}
-
-/* Verifica se o token salvo ainda é aceito pelas regras do banco. */
-export async function validarSessao(token: string): Promise<boolean> {
-  try {
-    await api<Produto[]>(`/rest/v1/produtos?select=id&limit=1`, { token, texto: true })
-    return true
-  } catch (e) {
-    if (e instanceof ErroApi) return false
-    return true
-  }
-}
+const tabela = (nome: string) => `/rest/v1/${nome}`
 
 export type Produto = {
   id: string
   nome: string
+  slug: string | null
   descricao: string | null
   preco: number
   preco_original: number | null
@@ -96,39 +32,41 @@ export type Oferta = {
   ordem: number
 }
 
-type Token = string
-
-const tabela = (nome: string) => `/rest/v1/${nome}`
-
 export const listarProdutosPublico = () =>
   api<Produto[]>(`${tabela('produtos')}?select=*&ativo=eq.true&order=criado_em.desc`)
 
 export const listarOfertasPublico = () =>
   api<Oferta[]>(`${tabela('ofertas')}?select=*&ativo=eq.true&order=ordem.asc`)
 
-export const listarProdutos = (token: Token) =>
-  api<Produto[]>(`${tabela('produtos')}?select=*&order=criado_em.desc`, { token })
+export const listarProdutos = () =>
+  api<Produto[]>(`${tabela('produtos')}?select=*&order=criado_em.desc`)
 
-export const listarOfertas = (token: Token) =>
-  api<Oferta[]>(`${tabela('ofertas')}?select=*&order=ordem.asc`, { token })
+export const listarOfertas = () =>
+  api<Oferta[]>(`${tabela('ofertas')}?select=*&order=ordem.asc`)
 
-export const criarProduto = (token: Token, p: Partial<Produto>) =>
-  api<Produto[]>(tabela('produtos'), { metodo: 'POST', token, corpo: p })
+export const criarProduto = (p: Partial<Produto>) =>
+  api<Produto[]>(tabela('produtos'), { metodo: 'POST', corpo: p })
 
-export const atualizarProduto = (token: Token, id: string, p: Partial<Produto>) =>
-  api<Produto[]>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'PATCH', token, corpo: p })
+export const atualizarProduto = (id: string, p: Partial<Produto>) =>
+  api<Produto[]>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'PATCH', corpo: p })
 
-export const excluirProduto = (token: Token, id: string) =>
-  api<null>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'DELETE', token })
+export const excluirProduto = (id: string) =>
+  api<null>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'DELETE' })
 
-export const criarOferta = (token: Token, o: Partial<Oferta>) =>
-  api<Oferta[]>(tabela('ofertas'), { metodo: 'POST', token, corpo: o })
+export const criarOferta = (o: Partial<Oferta>) =>
+  api<Oferta[]>(tabela('ofertas'), { metodo: 'POST', corpo: o })
 
-export const atualizarOferta = (token: Token, id: string, o: Partial<Oferta>) =>
-  api<Oferta[]>(`${tabela('ofertas')}?id=eq.${id}`, { metodo: 'PATCH', token, corpo: o })
+export const atualizarOferta = (id: string, o: Partial<Oferta>) =>
+  api<Oferta[]>(`${tabela('ofertas')}?id=eq.${id}`, { metodo: 'PATCH', corpo: o })
 
-export const excluirOferta = (token: Token, id: string) =>
-  api<null>(`${tabela('ofertas')}?id=eq.${id}`, { metodo: 'DELETE', token })
+export const excluirOferta = (id: string) =>
+  api<null>(`${tabela('ofertas')}?id=eq.${id}`, { metodo: 'DELETE' })
+
+/* Redefinir a senha do painel continua disponível no banco, mas não é mais
+   exigido para entrar. */
+export async function trocarSenha(atual: string, nova: string): Promise<void> {
+  await rpc<boolean>('redefinir_senha_admin', { p_atual: atual, p_nova: nova })
+}
 
 /* ---------- Imagens no Storage (bucket "produtos") ---------- */
 
@@ -142,7 +80,7 @@ const TIPOS: Record<string, string> = {
 }
 const LIMITE = 5 * 1024 * 1024
 
-export async function enviarImagem(token: Token, arquivo: File, prefixo = 'produto'): Promise<string> {
+export async function enviarImagem(arquivo: File, prefixo = 'produto'): Promise<string> {
   const tipo = arquivo.type.toLowerCase()
   const ext = TIPOS[tipo]
   if (!ext) throw new Error('Formato não aceito. Envie JPG, PNG, WEBP ou AVIF.')
@@ -154,8 +92,8 @@ export async function enviarImagem(token: Token, arquivo: File, prefixo = 'produ
   const resposta = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
     method: 'POST',
     headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${token}`,
+      apikey: TOKEN_PAINEL,
+      Authorization: `Bearer ${TOKEN_PAINEL}`,
       'Content-Type': tipo,
       'cache-control': 'max-age=31536000, public',
       'x-upsert': 'false',
@@ -177,11 +115,10 @@ export async function enviarImagem(token: Token, arquivo: File, prefixo = 'produ
   return caminho
 }
 
-export async function removerImagem(token: Token, caminho: string) {
+export async function removerImagem(caminho: string) {
   if (/^https?:\/\//i.test(caminho)) return
   await api<null>(`/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
     metodo: 'DELETE',
-    token,
   })
 }
 
@@ -197,10 +134,9 @@ export type ConfigLoja = {
 export const buscarConfig = () =>
   api<ConfigLoja[]>(`${tabela('configuracoes')}?select=*&id=eq.1`).then((r) => r[0])
 
-export const salvarConfig = (token: Token, c: Partial<ConfigLoja>) =>
+export const salvarConfig = (c: Partial<ConfigLoja>) =>
   api<ConfigLoja[]>(`${tabela('configuracoes')}?id=eq.1`, {
     metodo: 'PATCH',
-    token,
     corpo: { ...c, atualizado_em: new Date().toISOString() },
   })
 

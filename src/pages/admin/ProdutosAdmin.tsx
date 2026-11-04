@@ -4,7 +4,6 @@ import {
   atualizarProduto, criarProduto, excluirProduto, listarOfertas, listarProdutos,
   type Oferta, type Produto,
 } from '@/lib/admin'
-import { sessaoSalva } from '@/lib/admin'
 import { brl } from '@/lib/loja'
 import { urlImagem } from '@/lib/catalogo'
 import { ProdutoForm } from '@/pages/admin/ProdutoForm'
@@ -12,7 +11,6 @@ import { OfertasEditor } from '@/pages/admin/OfertasEditor'
 import { Button } from '@/components/ui/button'
 
 export function ProdutosAdmin() {
-  const token = sessaoSalva()?.token ?? ''
   const [produtos, setProdutos] = useState<Produto[]>([])
   const [ofertas, setOfertas] = useState<Oferta[]>([])
   const [carregando, setCarregando] = useState(true)
@@ -23,7 +21,7 @@ export function ProdutosAdmin() {
   const recarregar = useCallback(async () => {
     setErro('')
     try {
-      const [ps, os] = await Promise.all([listarProdutos(token), listarOfertas(token)])
+      const [ps, os] = await Promise.all([listarProdutos(), listarOfertas()])
       setProdutos(ps)
       setOfertas(os)
     } catch (e) {
@@ -31,14 +29,14 @@ export function ProdutosAdmin() {
     } finally {
       setCarregando(false)
     }
-  }, [token])
+  }, [])
 
   useEffect(() => { void recarregar() }, [recarregar])
 
   async function alternarAtivo(p: Produto) {
     setProdutos((atual) => atual.map((x) => (x.id === p.id ? { ...x, ativo: !x.ativo } : x)))
     try {
-      await atualizarProduto(token, p.id, { ativo: !p.ativo })
+      await atualizarProduto(p.id, { ativo: !p.ativo })
     } catch {
       setErro('Não foi possível alterar a visibilidade deste produto.')
       void recarregar()
@@ -48,7 +46,7 @@ export function ProdutosAdmin() {
   async function remover(p: Produto) {
     if (!window.confirm(`Excluir "${p.nome}" e todos os seus kits?`)) return
     try {
-      await excluirProduto(token, p.id)
+      await excluirProduto(p.id)
       setProdutos((atual) => atual.filter((x) => x.id !== p.id))
       setOfertas((atual) => atual.filter((o) => o.produto_id !== p.id))
     } catch {
@@ -76,10 +74,9 @@ export function ProdutosAdmin() {
 
       {novo && (
         <ProdutoForm
-          token={token}
           onCancelar={() => setNovo(false)}
           onSalvar={async (dados) => {
-            const criado = await criarProduto(token, dados)
+            const criado = await criarProduto(dados)
             setNovo(false)
             await recarregar()
             if (criado?.[0]) setAberto(criado[0].id)
@@ -132,15 +129,14 @@ export function ProdutosAdmin() {
               {expandido && (
                 <div className="grid gap-5 border-t border-sky-100 bg-sky-50/40 p-4">
                   <ProdutoForm
-                    token={token}
                     produto={p}
                     onCancelar={() => setAberto(null)}
                     onSalvar={async (dados) => {
-                      await atualizarProduto(token, p.id, dados)
+                      await atualizarProduto(p.id, dados)
                       await recarregar()
                     }}
                   />
-                  <OfertasEditor token={token} produto={p} ofertas={minhas} onMudou={recarregar} />
+                  <OfertasEditor produto={p} ofertas={minhas} onMudou={recarregar} />
                 </div>
               )}
             </li>

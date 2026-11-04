@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 
-export function ConfigAdmin({ token }: { token: string }) {
+export function ConfigAdmin() {
   const [form, setForm] = useState<ConfigLoja | null>(null)
   const [cupons, setCupons] = useState('')
   const [status, setStatus] = useState('')
@@ -16,13 +16,14 @@ export function ConfigAdmin({ token }: { token: string }) {
     void (async () => {
       try {
         const c = await buscarConfig()
+        if (!c) { setErro('Os ajustes ainda não foram criados no banco.'); return }
         setForm(c)
         setCupons(JSON.stringify(c.cupons ?? {}, null, 2))
       } catch {
         setErro('Não foi possível carregar as configurações.')
       }
     })()
-  }, [token])
+  }, [])
 
   function campo<K extends keyof ConfigLoja>(chave: K, valor: ConfigLoja[K]) {
     setForm((f) => (f ? { ...f, [chave]: valor } : f))
@@ -43,7 +44,7 @@ export function ConfigAdmin({ token }: { token: string }) {
     }
     setSalvando(true)
     try {
-      await salvarConfig(token, { ...form, cupons: json })
+      await salvarConfig({ ...form, cupons: json })
       setStatus('Configurações salvas.')
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Não foi possível salvar.')
@@ -53,7 +54,9 @@ export function ConfigAdmin({ token }: { token: string }) {
   }
 
   if (!form) {
-    return <p className="flex items-center gap-2 text-sm font-bold text-sky-900/60"><Loader2 className="size-4 animate-spin" aria-hidden /> Carregando ajustes…</p>
+    return erro
+      ? <p className="rounded-2xl bg-red-50 p-4 text-sm font-bold text-red-700 ring-1 ring-red-200">{erro}</p>
+      : <p className="flex items-center gap-2 text-sm font-bold text-sky-900/60"><Loader2 className="size-4 animate-spin" aria-hidden /> Carregando ajustes…</p>
   }
 
   const classe = 'h-11 rounded-xl border-sky-200 bg-white'
@@ -66,10 +69,10 @@ export function ConfigAdmin({ token }: { token: string }) {
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <div className="grid gap-1.5"><Label htmlFor="nome_loja">Nome da loja</Label><Input id="nome_loja" value={form.nome_loja} onChange={(e) => campo('nome_loja', e.target.value)} className={classe} /></div>
-        <div className="grid gap-1.5"><Label htmlFor="slogan">Slogan</Label><Input id="slogan" value={form.slogan} onChange={(e) => campo('slogan', e.target.value)} className={classe} /></div>
-        <div className="grid gap-1.5"><Label htmlFor="preco_unitario">Preço (R$)</Label><Input id="preco_unitario" inputMode="decimal" value={String(form.preco_unitario)} onChange={(e) => campo('preco_unitario', Number(e.target.value.replace(',', '.')) || 0)} className={classe} /></div>
-        <div className="grid gap-1.5"><Label htmlFor="preco_original">Preço &quot;de&quot; (R$)</Label><Input id="preco_original" inputMode="decimal" value={String(form.preco_original)} onChange={(e) => campo('preco_original', Number(e.target.value.replace(',', '.')) || 0)} className={classe} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="nome_loja">Nome da loja</Label><Input id="nome_loja" value={form.nome_loja ?? ''} onChange={(e) => campo('nome_loja', e.target.value)} className={classe} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="slogan">Slogan</Label><Input id="slogan" value={form.slogan ?? ''} onChange={(e) => campo('slogan', e.target.value)} className={classe} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="preco_unitario">Preço (R$)</Label><Input id="preco_unitario" inputMode="decimal" value={String(form.preco_unitario ?? 0)} onChange={(e) => campo('preco_unitario', Number(e.target.value.replace(',', '.')) || 0)} className={classe} /></div>
+        <div className="grid gap-1.5"><Label htmlFor="preco_original">Preço &quot;de&quot; (R$)</Label><Input id="preco_original" inputMode="decimal" value={String(form.preco_original ?? 0)} onChange={(e) => campo('preco_original', Number(e.target.value.replace(',', '.')) || 0)} className={classe} /></div>
         <div className="grid gap-1.5 sm:col-span-2">
           <Label htmlFor="cupons">Cupons (% de desconto em JSON)</Label>
           <textarea id="cupons" value={cupons} onChange={(e) => setCupons(e.target.value)} rows={4} spellCheck={false} className="rounded-xl border border-sky-200 bg-white p-3 font-mono text-xs text-sky-950 outline-none focus-visible:ring-2 focus-visible:ring-sky-500" />

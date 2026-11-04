@@ -1,29 +1,49 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useParams } from 'react-router-dom'
 import { BadgeCheck, Check, CreditCard, Gift, Lock, PackageCheck, ShieldCheck, Star, Tag, Truck, UserRound } from 'lucide-react'
 import { toast } from 'sonner'
 import { Boia } from '@/components/Boia'
 import { Checkout, dadosVazios, validarDados, type DadosCliente } from '@/components/Checkout'
+import { Galeria } from '@/components/Galeria'
 import { Layout } from '@/components/Layout'
 import { Reveal } from '@/components/Reveal'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { brl, calcular, loja } from '@/lib/loja'
+import { brl, loja as lojaLocal } from '@/lib/loja'
+import { calcularKit, type KitVitrine } from '@/lib/catalogo'
+import { useVitrine } from '@/lib/useVitrine'
 import { cn } from '@/lib/utils'
 
 export default function Produto() {
-  const [sel, setSel] = useState('familia')
+  const { slug } = useParams<{ slug?: string }>()
+  const { produtos } = useVitrine()
+  const produto = produtos.find((p) => p.id === slug) ?? produtos[0]
+  const kits: KitVitrine[] = produto.kits.length ? produto.kits : lojaLocal.ofertas.map((o) => ({ ...o }))
+
+  const [kitId, setKitId] = useState('')
+  const kit = kits.find((k) => k.id === kitId) ?? kits.find((k) => k.destaque) ?? kits[0]
   const [cupom, setCupom] = useState('')
   const [aplicado, setAplicado] = useState(0)
   const [dados, setDados] = useState<DadosCliente>(dadosVazios)
   const [revisar, setRevisar] = useState(false)
-  const oferta = loja.ofertas.find((o) => o.id === sel) ?? loja.ofertas[0]
-  const c = calcular(oferta.qtd, oferta.desconto, aplicado)
-  const indice = loja.ofertas.findIndex((o) => o.id === oferta.id)
+
+  useEffect(() => {
+    setAplicado(0)
+    setCupom('')
+  }, [produto.id])
+
+  const c = calcularKit(produto.preco, produto.preco_original, kit.qtd, kit.desconto, aplicado)
+  const indice = kits.findIndex((k) => k.id === kit.id)
+  const precoBase = produto.preco_original && produto.preco_original > produto.preco ? produto.preco_original : produto.preco
+  const descontoPrincipal = Math.max(0, Math.round((1 - produto.preco / precoBase) * 100))
 
   function aplicar() {
     const codigo = cupom.trim().toUpperCase()
-    if (!codigo) { toast.error('Digite um cupom para aplicar.'); return }
-    const pct = loja.cupons[codigo]
+    if (!codigo) {
+      toast.error('Digite um cupom para aplicar.')
+      return
+    }
+    const pct = lojaLocal.cupons[codigo]
     if (pct) {
       setAplicado(pct)
       toast.success(`Cupom ${codigo} aplicado: ${pct}% OFF`)
@@ -41,43 +61,29 @@ export default function Produto() {
       return
     }
     setRevisar(false)
-    toast.info('Checkout com Mercado Pago em breve.', {
-      description: `Dados de entrega salvos para ${dados.nome}. O pagamento será liberado após a conexão das credenciais seguras.`,
+    toast.info('Pagamento sendo liberado.', {
+      description: `Dados de entrega de ${dados.nome} registrados. O checkout com Mercado Pago entra no ar assim que as credenciais forem conectadas.`,
     })
   }
 
   return (
     <Layout>
       <div className="mx-auto max-w-6xl px-5 pt-6 text-xs font-bold text-sky-900/50">
-        <span>Início</span> <span aria-hidden>/</span> <span className="text-sky-800">Boias e kits</span>
+        <span>Início</span> <span aria-hidden>/</span> <span className="text-sky-800">{produto.nome.split(' ').slice(0, 3).join(' ')}</span>
       </div>
 
       <div className="mx-auto grid max-w-6xl gap-10 px-5 py-8 lg:grid-cols-[1.05fr_1fr] lg:gap-14 lg:py-12">
         <Reveal className="lg:sticky lg:top-24 lg:self-start">
-          <div className="relative overflow-hidden rounded-[2rem] bg-gradient-to-br from-cyan-200 via-sky-100 to-orange-50 p-6 ring-1 ring-sky-100 sm:p-10">
-            <div className="pointer-events-none absolute -top-10 -right-10 size-48 rounded-full bg-white/50 blur-2xl" aria-hidden />
-            <span className="absolute top-5 left-5 rounded-full bg-orange-500 px-3 py-1 text-[11px] font-black tracking-wide text-white shadow-lg shadow-orange-500/30">
-              {oferta.desconto > 0 ? `${oferta.desconto}% OFF` : 'LANÇAMENTO'}
-            </span>
-            <Boia key={oferta.id} variante={indice} className="mx-auto max-w-xs animate-float sm:max-w-sm" />
-            <div className="mt-6 grid grid-cols-3 gap-3">
-              {loja.ofertas.map((o, i) => (
-                <button
-                  key={o.id}
-                  type="button"
-                  onClick={() => setSel(o.id)}
-                  aria-pressed={sel === o.id}
-                  className={cn(
-                    'group rounded-2xl border-2 bg-white/80 p-2 transition-all hover:-translate-y-0.5',
-                    sel === o.id ? 'border-sky-600 shadow-lg shadow-sky-600/15' : 'border-white hover:border-sky-200',
-                  )}
-                >
-                  <Boia variante={i} className="mx-auto w-10" />
-                  <span className="mt-1 block text-[10px] font-black text-sky-800">{o.nome}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <Galeria
+            imagens={produto.imagens}
+            alt={produto.nome}
+            reserva={<Boia key={kit.id} variante={indice} className="mx-auto max-w-xs animate-float sm:max-w-sm" />}
+            selo={
+              <span className="rounded-full bg-orange-500 px-3 py-1 text-[11px] font-black tracking-wide text-white shadow-lg shadow-orange-500/30">
+                {descontoPrincipal > 0 ? `${descontoPrincipal}% OFF` : 'LANÇAMENTO'}
+              </span>
+            }
+          />
 
           <div className="mt-4 grid grid-cols-2 gap-2 text-[11px] font-bold text-sky-900/70 sm:grid-cols-4">
             {[{ i: Truck, t: 'Frete grátis' }, { i: ShieldCheck, t: 'Compra segura' }, { i: PackageCheck, t: 'Envio em 24h' }, { i: Gift, t: 'Embalagem presente' }].map(({ i: Icon, t }) => (
@@ -100,26 +106,33 @@ export default function Produto() {
               </span>
             </div>
             <h1 className="mt-3 text-3xl leading-tight font-black tracking-tight text-sky-950 text-balance sm:text-4xl">
-              Boia MamboBaby — {oferta.nome}
+              {produto.nome}
             </h1>
             <p className="mt-3 leading-relaxed text-sky-900/70">
-              Diversão, cores e momentos especiais para toda a família. Escolha a quantidade ideal e economize no kit.
+              {produto.descricao || 'Diversão, cores e momentos especiais para toda a família. Escolha a quantidade ideal e economize no kit.'}
             </p>
+            <div className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              <span className="text-sm text-sky-900/45 line-through">{brl(precoBase)}</span>
+              <span className="text-3xl font-black text-sky-950">{brl(produto.preco)}</span>
+              <span className="rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700 ring-1 ring-emerald-100">
+                à vista no Pix ou 12x sem juros
+              </span>
+            </div>
           </Reveal>
 
           <Reveal delay={80} className="mt-7">
             <p className="text-xs font-black tracking-widest text-sky-600 uppercase">Escolha seu kit</p>
             <div className="mt-3 grid gap-2.5" role="radiogroup" aria-label="Escolha do kit">
-              {loja.ofertas.map((o) => {
-                const x = calcular(o.qtd, o.desconto)
-                const ativo = sel === o.id
+              {kits.map((o) => {
+                const x = calcularKit(produto.preco, produto.preco_original, o.qtd, o.desconto)
+                const ativo = kit.id === o.id
                 return (
                   <button
                     key={o.id}
                     type="button"
                     role="radio"
                     aria-checked={ativo}
-                    onClick={() => setSel(o.id)}
+                    onClick={() => setKitId(o.id)}
                     className={cn(
                       'flex items-center gap-3 rounded-2xl border-2 p-3.5 text-left transition-all',
                       ativo ? 'border-sky-600 bg-sky-50/80 shadow-md shadow-sky-600/10' : 'border-sky-100 bg-white hover:border-sky-300 hover:bg-sky-50/40',
@@ -134,7 +147,7 @@ export default function Produto() {
                         {o.destaque && <span className="rounded-full bg-amber-300 px-2 py-0.5 text-[10px] font-black text-amber-950">MELHOR ECONOMIA</span>}
                         {o.desconto > 0 && <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-black text-orange-700">{o.desconto}% OFF</span>}
                       </span>
-                      <span className="mt-0.5 block text-xs text-sky-900/60">{o.qtd} boia(s) · {brl(x.porUnidade)} cada</span>
+                      <span className="mt-0.5 block text-xs text-sky-900/60">{o.qtd} {o.qtd > 1 ? 'boias' : 'boia'} · {brl(x.porUnidade)} cada</span>
                     </span>
                     <span className="text-right">
                       <span className="block text-xs text-sky-900/40 line-through">{brl(x.original)}</span>
@@ -194,15 +207,17 @@ export default function Produto() {
             <div className={cn('rounded-3xl border bg-white p-5 shadow-xl shadow-sky-900/5 sm:p-6', revisar ? 'border-orange-300 ring-2 ring-orange-200' : 'border-sky-100')}>
               <div className="flex items-start justify-between gap-3">
                 <div>
-                  <p className="text-xs font-bold text-sky-900/50">Total com {oferta.nome}{aplicado > 0 ? ` + cupom ${aplicado}%` : ''}</p>
+                  <p className="text-xs font-bold text-sky-900/50">Total com {kit.nome}{aplicado > 0 ? ` + cupom ${aplicado}%` : ''}</p>
                   <p className="mt-0.5 text-3xl font-black tracking-tight text-sky-950 sm:text-4xl">{brl(c.total)}</p>
                   <p className="text-xs font-bold text-sky-700">ou 12x de {brl(c.parcela)} sem juros</p>
                 </div>
                 <div className="text-right">
                   <p className="text-xs text-sky-900/45 line-through">{brl(c.original)}</p>
-                  <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700 ring-1 ring-emerald-100">
-                    economize {brl(c.economia)}
-                  </span>
+                  {c.economia > 0 && (
+                    <span className="mt-1 inline-block rounded-full bg-emerald-50 px-2.5 py-1 text-[11px] font-black text-emerald-700 ring-1 ring-emerald-100">
+                      economize {brl(c.economia)}
+                    </span>
+                  )}
                 </div>
               </div>
 

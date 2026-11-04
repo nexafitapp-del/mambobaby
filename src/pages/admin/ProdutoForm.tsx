@@ -1,13 +1,15 @@
 import { useState } from 'react'
 import { Loader2, Save, X } from 'lucide-react'
 import type { Produto } from '@/lib/admin'
+import { ImagensEditor } from '@/components/admin/ImagensEditor'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 
 type Props = {
+  token: string
   produto?: Produto
-  onSalvar: (dados: { nome: string; descricao: string; preco: number; preco_original: number | null; ativo: boolean }) => Promise<void>
+  onSalvar: (dados: { nome: string; descricao: string; preco: number; preco_original: number | null; ativo: boolean; imagens: string[] }) => Promise<void>
   onCancelar: () => void
 }
 
@@ -16,12 +18,13 @@ const numero = (v: string) => {
   return Number.isFinite(n) ? n : 0
 }
 
-export function ProdutoForm({ produto, onSalvar, onCancelar }: Props) {
+export function ProdutoForm({ token, produto, onSalvar, onCancelar }: Props) {
   const [nome, setNome] = useState(produto?.nome ?? '')
   const [descricao, setDescricao] = useState(produto?.descricao ?? '')
   const [preco, setPreco] = useState(produto ? String(produto.preco) : '')
   const [original, setOriginal] = useState(produto?.preco_original ? String(produto.preco_original) : '')
   const [ativo, setAtivo] = useState(produto?.ativo ?? true)
+  const [imagens, setImagens] = useState<string[]>(produto?.imagens ?? [])
   const [erro, setErro] = useState('')
   const [salvando, setSalvando] = useState(false)
 
@@ -38,6 +41,7 @@ export function ProdutoForm({ produto, onSalvar, onCancelar }: Props) {
         preco: numero(preco),
         preco_original: original.trim() ? numero(original) : null,
         ativo,
+        imagens,
       })
     } catch (err) {
       setErro(err instanceof Error ? err.message : 'Não foi possível salvar o produto.')
@@ -79,12 +83,17 @@ export function ProdutoForm({ produto, onSalvar, onCancelar }: Props) {
         </div>
       </div>
 
+      <ImagensEditor token={token} imagens={imagens} onChange={setImagens} />
+
       <label className="inline-flex items-center gap-2 text-xs font-bold text-sky-900/80">
         <input type="checkbox" checked={ativo} onChange={(e) => setAtivo(e.target.checked)} className="size-4 accent-sky-600" />
         Visível na loja
       </label>
 
       {erro && <p className="rounded-xl bg-red-50 p-3 text-xs font-bold text-red-700 ring-1 ring-red-200">{erro}</p>}
+      {imagens.length === 0 && (
+        <p className="text-[11px] font-bold text-amber-700">Dica: produtos com foto vendem mais. A vitrine mostra uma ilustração enquanto não houver imagem.</p>
+      )}
 
       <div className="flex gap-2">
         <Button type="submit" disabled={salvando} className="rounded-xl bg-sky-700 font-black text-white hover:bg-sky-800">

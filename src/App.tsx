@@ -28,6 +28,7 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Inicio />} />
         <Route path="/produto" element={<Produto />} />
+        <Route path="/produto/:slug" element={<Produto />} />
         <Route path="/politicas" element={<Politicas />} />
         <Route path="/admin/*" element={<Admin />} />
         <Route path="*" element={<NaoEncontrada />} />

@@ -6,6 +6,7 @@ import {
 } from '@/lib/admin'
 import { sessaoSalva } from '@/lib/admin'
 import { brl } from '@/lib/loja'
+import { urlImagem } from '@/lib/catalogo'
 import { ProdutoForm } from '@/pages/admin/ProdutoForm'
 import { OfertasEditor } from '@/pages/admin/OfertasEditor'
 import { Button } from '@/components/ui/button'
@@ -75,6 +76,7 @@ export function ProdutosAdmin() {
 
       {novo && (
         <ProdutoForm
+          token={token}
           onCancelar={() => setNovo(false)}
           onSalvar={async (dados) => {
             const criado = await criarProduto(token, dados)
@@ -100,13 +102,20 @@ export function ProdutosAdmin() {
           return (
             <li key={p.id} className="overflow-hidden rounded-3xl border border-sky-100 bg-white">
               <div className="flex flex-wrap items-center gap-3 p-4">
+                <div className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-2xl bg-sky-50 ring-1 ring-sky-100">
+                  {p.imagens?.[0] ? (
+                    <img src={urlImagem(p.imagens[0])} alt="" className="size-full object-cover" loading="lazy" />
+                  ) : (
+                    <Package className="size-5 text-sky-400" aria-hidden />
+                  )}
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-black text-sky-950">{p.nome}</p>
                   <p className="text-xs font-bold text-sky-800">
                     {brl(Number(p.preco))}
                     {p.preco_original ? <span className="ml-2 font-medium text-sky-900/40 line-through">{brl(Number(p.preco_original))}</span> : null}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-sky-900/50">{minhas.length} kit(s) · {p.ativo ? 'visível na loja' : 'oculto'}</p>
+                  <p className="mt-0.5 text-[11px] text-sky-900/50">{minhas.length} kit(s) · {p.imagens?.length ?? 0} foto(s) · {p.ativo ? 'visível na loja' : 'oculto'}</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
                   <button type="button" onClick={() => void alternarAtivo(p)} className="rounded-full border border-sky-200 px-3 py-1.5 text-[11px] font-bold text-sky-800 hover:bg-sky-50">
@@ -123,6 +132,7 @@ export function ProdutosAdmin() {
               {expandido && (
                 <div className="grid gap-5 border-t border-sky-100 bg-sky-50/40 p-4">
                   <ProdutoForm
+                    token={token}
                     produto={p}
                     onCancelar={() => setAberto(null)}
                     onSalvar={async (dados) => {

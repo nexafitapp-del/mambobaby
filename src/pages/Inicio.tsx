@@ -1,13 +1,20 @@
 import { ArrowRight, BadgeCheck, CreditCard, Droplets, Gift, Heart, PackageCheck, ShieldCheck, Sparkles, Star, Truck } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { Boia } from '@/components/Boia'
+import { Galeria } from '@/components/Galeria'
 import { Layout } from '@/components/Layout'
 import { Reveal } from '@/components/Reveal'
 import { Button } from '@/components/ui/button'
-import { brl, calcular, loja } from '@/lib/loja'
+import { brl, loja as lojaLocal } from '@/lib/loja'
+import { calcularKit, urlImagem, type ProdutoVitrine } from '@/lib/catalogo'
+import { useVitrine } from '@/lib/useVitrine'
 import { cn } from '@/lib/utils'
 
-function Hero() {
+function Hero({ produto }: { produto: ProdutoVitrine }) {
+  const preco = produto.preco
+  const original = produto.preco_original && produto.preco_original > preco ? produto.preco_original : null
+  const melhorKit = produto.kits.find((k) => k.destaque) ?? produto.kits[produto.kits.length - 1]
+  const link = produto.id === 'local' ? '/produto' : `/produto/${produto.id}`
   return (
     <section className="relative overflow-hidden">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(60%_50%_at_50%_0%,rgba(56,189,248,0.28),transparent_70%)]" aria-hidden />
@@ -32,10 +39,10 @@ function Hero() {
           </p>
           <div className="mt-8 flex flex-col items-center gap-3 sm:flex-row sm:justify-center lg:justify-start">
             <Button asChild size="lg" className="h-12 w-full rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-8 text-sm font-black tracking-wide text-white shadow-xl shadow-orange-500/30 transition-transform hover:scale-[1.03] active:scale-95 sm:w-auto">
-              <Link to="/produto">Quero minha MamboBaby <ArrowRight className="size-4" aria-hidden /></Link>
+              <Link to={link}>Quero minha MamboBaby <ArrowRight className="size-4" aria-hidden /></Link>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-12 w-full rounded-full border-sky-300 bg-white/70 px-7 text-sm font-bold text-sky-900 backdrop-blur transition-colors hover:bg-white sm:w-auto">
-              <Link to="/produto">Ver kits com desconto</Link>
+              <Link to={link}>Ver kits com desconto</Link>
             </Button>
           </div>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-x-6 gap-y-3 text-xs font-bold text-sky-900/70 lg:justify-start">
@@ -48,15 +55,21 @@ function Hero() {
         <div className="relative mx-auto w-full max-w-md lg:max-w-none">
           <div className="absolute inset-6 rounded-[3rem] bg-gradient-to-br from-cyan-200 via-sky-200 to-orange-100 opacity-70 blur-2xl" aria-hidden />
           <div className="relative animate-float">
-            <Boia variante={0} className="mx-auto max-w-sm lg:max-w-md" />
+            <Galeria
+              imagens={produto.imagens}
+              alt={produto.nome}
+              reserva={<Boia variante={0} className="mx-auto max-w-sm lg:max-w-md" />}
+            />
           </div>
           <div className="absolute top-4 -left-2 flex items-center gap-2 rounded-2xl bg-white/90 px-3 py-2 text-xs font-black text-sky-900 shadow-xl shadow-sky-900/10 ring-1 ring-sky-100 backdrop-blur sm:left-0">
             <span className="grid size-7 place-items-center rounded-full bg-emerald-100 text-emerald-700"><BadgeCheck className="size-4" aria-hidden /></span>
-            a partir de {brl(loja.precoUnitario)}
+            a partir de {brl(preco)}
           </div>
-          <div className="absolute bottom-10 -right-1 rounded-2xl bg-orange-500 px-3.5 py-2 text-xs font-black text-white shadow-xl shadow-orange-500/30 sm:right-2">
-            15% OFF no Kit Família
-          </div>
+          {melhorKit && melhorKit.desconto > 0 && (
+            <div className="absolute bottom-10 -right-1 rounded-2xl bg-orange-500 px-3.5 py-2 text-xs font-black text-white shadow-xl shadow-orange-500/30 sm:right-2">
+              {melhorKit.desconto}% OFF no {melhorKit.nome}
+            </div>
+          )}
         </div>
       </div>
 
@@ -82,7 +95,54 @@ function Hero() {
   )
 }
 
+function SecaoProdutos({ produtos }: { produtos: ProdutoVitrine[] }) {
+  if (produtos.length <= 1) return null
+  return (
+    <section className="bg-white py-20">
+      <div className="mx-auto max-w-6xl px-6">
+        <Reveal>
+          <p className="text-xs font-black tracking-[0.2em] text-sky-600 uppercase">Loja</p>
+          <h2 className="mt-2 text-3xl font-black tracking-tight text-sky-950 text-balance sm:text-4xl">Todos os modelos</h2>
+        </Reveal>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          {produtos.map((p, i) => {
+            const kit = p.kits.find((k) => k.destaque) ?? p.kits[0]
+            const c = kit ? calcularKit(p.preco, p.preco_original, kit.qtd, kit.desconto) : null
+            return (
+              <Reveal key={p.id} delay={i * 70}>
+                <Link
+                  to={`/produto/${p.id}`}
+                  className="group flex h-full flex-col overflow-hidden rounded-[1.75rem] border border-sky-100 bg-white p-5 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-sky-900/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-700"
+                >
+                  <div className="grid aspect-square place-items-center overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-100 to-orange-50 p-3">
+                    {p.imagens[0] ? (
+                      <img src={urlImagem(p.imagens[0])} alt={p.nome} className="size-full object-contain transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                    ) : (
+                      <Boia variante={i} className="w-28 transition-transform duration-500 group-hover:scale-105" />
+                    )}
+                  </div>
+                  <h3 className="mt-4 line-clamp-2 text-base font-black text-sky-950">{p.nome}</h3>
+                  <p className="mt-1 text-sm text-sky-900/60">a partir de {brl(p.preco)}</p>
+                  <div className="mt-auto pt-4">
+                    {c && <p className="text-xs font-bold text-sky-700">{kit.nome}: {brl(c.total)}</p>}
+                    <span className="mt-2 inline-flex items-center gap-1.5 text-sm font-black text-sky-700 transition-colors group-hover:text-orange-600">
+                      Ver produto <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" aria-hidden />
+                    </span>
+                  </div>
+                </Link>
+              </Reveal>
+            )
+          })}
+        </div>
+      </div>
+    </section>
+  )
+}
+
 function Kits() {
+  const { produtos, carregando } = useVitrine()
+  const melhor: ProdutoVitrine = produtos.find((p) => p.kits.some((k) => k.destaque)) ?? produtos[0]
+  const kits = melhor.kits.length ? melhor.kits : lojaLocal.ofertas.map((o) => ({ ...o }))
   return (
     <section className="mx-auto max-w-6xl px-6 py-20">
       <Reveal className="text-center">
@@ -91,12 +151,12 @@ function Kits() {
         <p className="mx-auto mt-3 max-w-md text-sky-900/70">Compre mais e economize: quanto maior o kit, maior o desconto por unidade.</p>
       </Reveal>
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {loja.ofertas.map((o, i) => {
-          const c = calcular(o.qtd, o.desconto)
+        {kits.map((o, i) => {
+          const c = calcularKit(melhor.preco, melhor.preco_original, o.qtd, o.desconto)
           return (
             <Reveal key={o.id} delay={i * 90}>
               <Link
-                to="/produto"
+                to={`/produto/${melhor.id}`}
                 className={cn(
                   'group relative flex h-full flex-col overflow-hidden rounded-[1.75rem] border bg-white p-6 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-sky-900/10 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-sky-700',
                   o.destaque ? 'border-orange-300 ring-2 ring-orange-200' : 'border-sky-100',
@@ -106,7 +166,11 @@ function Kits() {
                 {o.destaque && (
                   <span className="absolute top-4 right-4 rounded-full bg-orange-500 px-2.5 py-1 text-[10px] font-black tracking-wide text-white shadow-md">MELHOR ECONOMIA</span>
                 )}
-                <Boia variante={i} className="mx-auto w-24 transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-3" />
+                {melhor.imagens[i] || melhor.imagens[0] ? (
+                  <img src={urlImagem(melhor.imagens[i] ?? melhor.imagens[0])} alt="" className="mx-auto size-24 object-contain transition-transform duration-500 group-hover:scale-105" loading="lazy" />
+                ) : (
+                  <Boia variante={i} className="mx-auto w-24 transition-transform duration-500 group-hover:scale-105 group-hover:-rotate-3" />
+                )}
                 <h3 className="mt-4 text-lg font-black text-sky-900">{o.nome}</h3>
                 <p className="text-sm text-sky-900/60">{o.qtd} {o.qtd > 1 ? 'boias' : 'boia'} · {brl(c.porUnidade)} cada</p>
                 <div className="mt-auto pt-5">
@@ -122,6 +186,7 @@ function Kits() {
           )
         })}
       </div>
+      {carregando && <p className="mt-4 text-center text-xs text-sky-900/50">Carregando catálogo…</p>}
     </section>
   )
 }
@@ -190,7 +255,7 @@ function Depoimentos() {
   )
 }
 
-function CtaFinal() {
+function CtaFinal({ produtoId }: { produtoId: string }) {
   return (
     <section className="mx-auto max-w-6xl px-6 pb-4">
       <Reveal>
@@ -200,7 +265,7 @@ function CtaFinal() {
           <h2 className="relative text-3xl font-black tracking-tight text-white text-balance sm:text-4xl">Pronto para o próximo mergulho?</h2>
           <p className="relative mx-auto mt-3 max-w-md text-sky-100/80">Escolha seu kit, aplique o cupom MAMBO10 e receba em casa com frete grátis.</p>
           <Button asChild size="lg" className="relative mt-8 h-12 rounded-full bg-gradient-to-r from-orange-500 to-amber-400 px-9 font-black text-white shadow-xl shadow-orange-900/30 transition-transform hover:scale-105 active:scale-95">
-            <Link to="/produto">Comprar agora</Link>
+            <Link to={`/produto/${produtoId}`}>Comprar agora</Link>
           </Button>
         </div>
       </Reveal>
@@ -209,13 +274,16 @@ function CtaFinal() {
 }
 
 export default function Inicio() {
+  const { produtos } = useVitrine()
+  const principal = produtos.find((p) => p.kits.some((k) => k.destaque)) ?? produtos[0]
   return (
     <Layout>
-      <Hero />
+      <Hero produto={principal} />
       <Kits />
+      <SecaoProdutos produtos={produtos} />
       <Beneficios />
       <Depoimentos />
-      <CtaFinal />
+      <CtaFinal produtoId={principal.id} />
     </Layout>
   )
 }

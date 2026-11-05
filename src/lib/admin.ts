@@ -51,7 +51,7 @@ export const atualizarProduto = (id: string, p: Partial<Produto>) =>
   api<Produto[]>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'PATCH', corpo: p })
 
 export const excluirProduto = (id: string) =>
-  api<null>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'DELETE' })
+  api<null>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'DELETE', retorno: false })
 
 export const criarOferta = (o: Partial<Oferta>) =>
   api<Oferta[]>(tabela('ofertas'), { metodo: 'POST', corpo: o })
@@ -60,7 +60,7 @@ export const atualizarOferta = (id: string, o: Partial<Oferta>) =>
   api<Oferta[]>(`${tabela('ofertas')}?id=eq.${id}`, { metodo: 'PATCH', corpo: o })
 
 export const excluirOferta = (id: string) =>
-  api<null>(`${tabela('ofertas')}?id=eq.${id}`, { metodo: 'DELETE' })
+  api<null>(`${tabela('ofertas')}?id=eq.${id}`, { metodo: 'DELETE', retorno: false })
 
 /* Redefinir a senha do painel continua disponível no banco, mas não é mais
    exigido para entrar. */
@@ -94,21 +94,20 @@ export async function enviarImagem(arquivo: File, prefixo = 'produto'): Promise<
     headers: {
       apikey: TOKEN_PAINEL,
       Authorization: `Bearer ${TOKEN_PAINEL}`,
-      'Content-Type': tipo,
-      'cache-control': 'max-age=31536000, public',
-      'x-upsert': 'false',
+      'Content-Type': 'image/*',
+      'x-upsert': 'true',
     },
     body: arquivo,
   })
 
   if (!resposta.ok) {
     const texto = await resposta.text()
-    let msg = 'Não foi possível enviar a imagem.'
+    let msg = `O envio da foto foi recusado (${resposta.status}).`
     try {
       const obj = JSON.parse(texto) as Record<string, unknown>
-      msg = (obj.message as string) || (obj.error_description as string) || msg
+      msg = (obj.message as string) || (obj.error_description as string) || (obj.error as string) || msg
     } catch {
-      /* resposta sem JSON */
+      if (texto) msg = `${msg} ${texto.slice(0, 160)}`
     }
     throw new Error(msg)
   }
@@ -119,6 +118,7 @@ export async function removerImagem(caminho: string) {
   if (/^https?:\/\//i.test(caminho)) return
   await api<null>(`/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
     metodo: 'DELETE',
+    retorno: false,
   })
 }
 
@@ -139,6 +139,13 @@ export const salvarConfig = (c: Partial<ConfigLoja>) =>
     metodo: 'PATCH',
     corpo: { ...c, atualizado_em: new Date().toISOString() },
   })
+
+export const buscarPedidos = () =>
+  api<Pedido[]>(`${tabela('pedidos')}?select=id,status,total,criado_em,cliente_id&order=criado_em.desc&limit=50`)
+
+export function produtosAdminHref() {
+  return '/admin'
+}
 
 export type Pedido = {
   id: string

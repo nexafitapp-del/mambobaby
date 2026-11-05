@@ -5,59 +5,66 @@ export const SUPABASE_KEY = 'sb_publishable_RgMXWlM7Km3ipZ8s5c6jSg_5S6GwVg4'
 
 export class ErroApi extends Error {}
 
-type Opcoes = { metodo?: string; corpo?: unknown; token?: string | null }
+type Opcoes = { metodo?: string; corpo?: unknown; token?: string | null; retorno?: boolean }
+
+function lerErro(texto: string): string | null {
+  if (!texto) return null
+  try {
+    const obj = JSON.parse(texto) as Record<string, unknown>
+    const msg = (obj.message || obj.hint || obj.error_description || obj.error) as string | undefined
+    if (msg) return String(msg)
+    return null
+  } catch {
+    return texto.slice(0, 200)
+  }
+}
 
 export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
-  const { metodo = 'GET', corpo, token } = opcoes
+  const { metodo = 'GET', corpo, token, retorno = true } = opcoes
   const headers: Record<string, string> = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }
   headers.Authorization = `Bearer ${token || SUPABASE_KEY}`
+  if (retorno) headers.Prefer = 'return=representation'
 
-  let resposta: Response | null = null
-  let falha: unknown = null
-  /* Duas tentativas seguidas: cobre oscilação momentânea de rede. */
-  for (let tentativa = 0; tentativa < 2 && !resposta; tentativa++) {
-    const controller = new AbortController()
-    const relogio = setTimeout(() => controller.abort(), 15000)
-    try {
-      resposta = await fetch(`${SUPABASE_URL}${caminho}`, {
-        method: metodo,
-        headers,
-        signal: controller.signal,
-        body: corpo === undefined ? undefined : JSON.stringify(corpo),
-      })
-    } catch (erro) {
-      falha = erro
-      await new Promise((r) => setTimeout(r, 300))
-    } finally {
-      clearTimeout(relogio)
-    }
-  }
-
-  if (!resposta) {
-    const abortado = (falha as { name?: string } | null)?.name === 'AbortError'
+  const controller = new AbortController()
+  const relogio = setTimeout(() => controller.abort(), 20000)
+  let resposta: Response
+  try {
+    resposta = await fetch(`${SUPABASE_URL}${caminho}`, {
+      method: metodo,
+      headers,
+      signal: controller.signal,
+      body: corpo === undefined ? undefined : JSON.stringify(corpo),
+    })
+  } catch (erro) {
+    const abortado = (erro as { name?: string } | null)?.name === 'AbortError'
     throw new ErroApi(
       abortado
-        ? 'O servidor demorou demais para responder. Tente novamente em alguns segundos.'
-        : 'Sem resposta do servidor de dados. Confira a conexão e toque em tentar de novo.',
+        ? 'O servidor de dados demorou para responder. Tente de novo em alguns segundos.'
+        : `Não foi possível abrir a conexão com o banco de dados (${SUPABASE_URL}). Isso costuma ocorrer quando o projeto está pausado no Supabase ou a rede bloqueia o domínio.`,
     )
+  } finally {
+    clearTimeout(relogio)
   }
 
   const texto = await resposta.text()
-  let dados: unknown = null
-  if (texto) {
-    try {
-      dados = JSON.parse(texto)
-    } catch {
-      dados = texto
-    }
-  }
 
   if (!resposta.ok) {
-    const obj = dados as Record<string, unknown> | null
-    const msg = (obj && (obj.message || obj.hint || obj.error_description)) as string | undefined
-    throw new ErroApi(msg || 'Falha na comunicação com o servidor.')
+    const detalhe = lerErro(texto)
+    if (resposta.status === 401 || resposta.status === 403) {
+      throw new ErroApi(detalhe ? `Acesso recusado pelo banco: ${detalhe}` : 'Acesso recusado pelo banco de dados (401/403).')
+    }
+    if (resposta.status === 404) {
+      throw new ErroApi(detalhe ? `Recurso não encontrado no banco: ${detalhe}` : `Recurso não encontrado no banco: ${caminho}`)
+    }
+    throw new ErroApi(detalhe ? `O banco recusou a operação (${resposta.status}): ${detalhe}` : `O banco recusou a operação (${resposta.status}).`)
   }
-  return dados as T
+
+  if (!texto) return null as T
+  try {
+    return JSON.parse(texto) as T
+  } catch {
+    return texto as unknown as T
+  }
 }
 
 export function rpc<T = unknown>(nome: string, args: Record<string, unknown>, token?: string | null) {

@@ -5,7 +5,7 @@ export const SUPABASE_KEY = 'sb_publishable_RgMXWlM7Km3ipZ8s5c6jSg_5S6GwVg4'
 
 export class ErroApi extends Error {}
 
-type Opcoes = { metodo?: string; corpo?: unknown; token?: string | null; retorno?: boolean }
+type Opcoes = { metodo?: string; corpo?: unknown; token?: string | null; retorno?: boolean; cabecalhos?: Record<string, string> }
 
 function lerErro(texto: string): string | null {
   if (!texto) return null
@@ -19,10 +19,26 @@ function lerErro(texto: string): string | null {
   }
 }
 
+function descreverFalhaDeRede(erro: unknown): string {
+  const nome = (erro as { name?: string } | null)?.name
+  const detalhe = erro instanceof Error ? erro.message : ''
+  if (nome === 'AbortError') {
+    return 'O serviço de dados não respondeu em 20 segundos (tempo esgotado).'
+  }
+  if (/Failed to fetch|NetworkError|load failed|Network request failed/i.test(detalhe)) {
+    return 'O navegador não conseguiu abrir a conexão com o serviço de dados (rede bloqueada ou sem DNS).'
+  }
+  return `Falha de rede ao falar com o serviço de dados${detalhe ? ` (${detalhe})` : ''}`
+}
+
 export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
-  const { metodo = 'GET', corpo, token, retorno = true } = opcoes
-  const headers: Record<string, string> = { apikey: SUPABASE_KEY, 'Content-Type': 'application/json' }
-  headers.Authorization = `Bearer ${token || SUPABASE_KEY}`
+  const { metodo = 'GET', corpo, token, retorno = true, cabecalhos } = opcoes
+  const headers: Record<string, string> = {
+    apikey: SUPABASE_KEY,
+    Authorization: `Bearer ${token || SUPABASE_KEY}`,
+    'Content-Type': 'application/json',
+    ...cabecalhos,
+  }
   if (retorno) headers.Prefer = 'return=representation'
 
   const controller = new AbortController()
@@ -36,12 +52,7 @@ export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Pr
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
     })
   } catch (erro) {
-    const abortado = (erro as { name?: string } | null)?.name === 'AbortError'
-    throw new ErroApi(
-      abortado
-        ? 'A operação demorou demais e foi interrompida. Tente de novo.'
-        : 'A operação não pôde ser concluída agora. Tente de novo em alguns segundos.',
-    )
+    throw new ErroApi(descreverFalhaDeRede(erro))
   } finally {
     clearTimeout(relogio)
   }
@@ -55,6 +66,9 @@ export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Pr
     }
     if (resposta.status === 404) {
       throw new ErroApi(detalhe ? `Recurso não encontrado no banco: ${detalhe}` : `Recurso não encontrado no banco: ${caminho}`)
+    }
+    if (resposta.status >= 500) {
+      throw new ErroApi(detalhe ? `O serviço de dados falhou (${resposta.status}): ${detalhe}` : `O serviço de dados falhou (${resposta.status}).`)
     }
     throw new ErroApi(detalhe ? `O banco recusou a operação (${resposta.status}): ${detalhe}` : `O banco recusou a operação (${resposta.status}).`)
   }

@@ -10,8 +10,6 @@ const tabela = (nome: string) => `/rest/v1/${nome}`
 
 export type Produto = {
   id: string
-  nome: string
-  slug: string | null
   descricao: string | null
   preco: number
   preco_original: number | null
@@ -44,11 +42,23 @@ export const listarProdutos = () =>
 export const listarOfertas = () =>
   api<Oferta[]>(`${tabela('ofertas')}?select=*&order=ordem.asc`)
 
+/* Só as colunas que existem na tabela: evita erro de campo desconhecido. */
+function limparProduto(p: Partial<Produto>) {
+  const corpo: Record<string, unknown> = {}
+  if (p.nome !== undefined) corpo.nome = p.nome
+  if (p.descricao !== undefined) corpo.descricao = p.descricao
+  if (p.preco !== undefined) corpo.preco = p.preco
+  if (p.preco_original !== undefined) corpo.preco_original = p.preco_original
+  if (p.ativo !== undefined) corpo.ativo = p.ativo
+  if (p.imagens !== undefined) corpo.imagens = (p.imagens ?? []).filter(Boolean)
+  return corpo
+}
+
 export const criarProduto = (p: Partial<Produto>) =>
-  api<Produto[]>(tabela('produtos'), { metodo: 'POST', corpo: p })
+  api<Produto[]>(tabela('produtos'), { metodo: 'POST', corpo: limparProduto(p) })
 
 export const atualizarProduto = (id: string, p: Partial<Produto>) =>
-  api<Produto[]>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'PATCH', corpo: p })
+  api<Produto[]>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'PATCH', corpo: limparProduto(p) })
 
 export const excluirProduto = (id: string) =>
   api<null>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'DELETE', retorno: false })
@@ -103,9 +113,10 @@ export async function enviarImagem(arquivo: File, prefixo = 'produto'): Promise<
   const resposta = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
     method: 'POST',
     headers: {
-      apikey: TOKEN_PAINEL,
-      Authorization: `Bearer ${TOKEN_PAINEL}`,
-      'Content-Type': arquivo.type || 'application/octet-stream',
+      apikey: SUPABASE_KEY,
+      Authorization: `Bearer ${SUPABASE_KEY}`,
+      'Content-Type': tipo,
+      'cache-control': '3600',
       'x-upsert': 'true',
     },
     body: arquivo,
@@ -127,10 +138,13 @@ export async function enviarImagem(arquivo: File, prefixo = 'produto'): Promise<
 
 export async function removerImagem(caminho: string) {
   if (/^https?:\/\//i.test(caminho)) return
-  await api<null>(`/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
-    metodo: 'DELETE',
-    retorno: false,
+  const resposta = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
+    method: 'DELETE',
+    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
   })
+  if (!resposta.ok && resposta.status !== 404) {
+    throw new Error(`A foto não pôde ser removida (${resposta.status}).`)
+  }
 }
 
 export type ConfigLoja = {
@@ -152,6 +166,22 @@ export const salvarConfig = (c: Partial<ConfigLoja>) =>
   })
 
 export const buscarPedidos = (): Promise<Pedido[]> => Promise.resolve([])
+
+/* Diagnóstico: abre uma conexão direta e devolve status e mensagem reais. */
+export async function testarConexao(): Promise<string> {
+  const inicio = Date.now()
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/produtos?select=id&limit=1`, {
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    })
+    const ms = Date.now() - inicio
+    const texto = (await r.text()).slice(0, 300)
+    return `HTTP ${r.status} em ${ms} ms · ${texto || '(sem corpo)'}`
+  } catch (e) {
+    const ms = Date.now() - inicio
+    return `Sem resposta em ${ms} ms · ${e instanceof Error ? e.name + ': ' + e.message : String(e)}`
+  }
+}
 
 export function painelAberto() {
   return true

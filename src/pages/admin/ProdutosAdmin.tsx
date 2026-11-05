@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Package } from 'lucide-react'
 import {
-  atualizarProduto, criarProduto, excluirProduto, listarOfertas, listarProdutos, removerImagensDoProduto,
+  atualizarProduto, criarProduto, excluirProduto, listarOfertas, listarProdutos, removerImagensDoProduto, testarConexao,
   type Oferta, type Produto,
 } from '@/lib/admin'
 import { brl } from '@/lib/loja'
@@ -17,22 +17,24 @@ export function ProdutosAdmin() {
   const [erro, setErro] = useState('')
   const [novo, setNovo] = useState(false)
   const [aberto, setAberto] = useState<string | null>(null)
+  const [diagnostico, setDiagnostico] = useState('')
 
   const recarregar = useCallback(async () => {
     setErro('')
     try {
-      const [ps, os] = await Promise.all([listarProdutos(), listarOfertas()])
+      const ps = await listarProdutos()
       setProdutos(ps)
-      setOfertas(os)
     } catch (e) {
-      setErro(
-        e instanceof Error && e.message
-          ? e.message
-          : 'O catálogo não pôde ser carregado. Tente de novo.',
-      )
-    } finally {
+      setErro(e instanceof Error && e.message ? e.message : 'O catálogo não pôde ser carregado. Tente de novo.')
       setCarregando(false)
+      return
     }
+    try {
+      setOfertas(await listarOfertas())
+    } catch {
+      setOfertas([])
+    }
+    setCarregando(false)
   }, [])
 
   useEffect(() => { void recarregar() }, [recarregar])
@@ -85,6 +87,16 @@ export function ProdutosAdmin() {
           >
             Tentar de novo
           </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => void testarConexao().then(setDiagnostico)}
+              className="w-fit rounded-full border border-red-300 px-3 py-1.5 text-[11px] font-bold text-red-700 hover:bg-red-100"
+            >
+              Testar conexão
+            </button>
+            {diagnostico && <code className="text-[10px] font-medium break-all text-red-800/80">{diagnostico}</code>}
+          </div>
         </div>
       )}
 

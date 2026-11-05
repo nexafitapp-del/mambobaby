@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Package } from 'lucide-react'
 import {
-  atualizarProduto, criarProduto, excluirProduto, listarOfertas, listarProdutos,
+  atualizarProduto, criarProduto, excluirProduto, listarOfertas, listarProdutos, removerImagensDoProduto,
   type Oferta, type Produto,
 } from '@/lib/admin'
 import { brl } from '@/lib/loja'
@@ -28,7 +28,7 @@ export function ProdutosAdmin() {
       setErro(
         e instanceof Error && e.message
           ? e.message
-          : 'O banco não respondeu ao carregar o catálogo.',
+          : 'O catálogo não pôde ser carregado. Tente de novo.',
       )
     } finally {
       setCarregando(false)
@@ -50,6 +50,7 @@ export function ProdutosAdmin() {
   async function remover(p: Produto) {
     if (!window.confirm(`Excluir "${p.nome}" e todos os seus kits?`)) return
     try {
+      await removerImagensDoProduto(p.id, p.imagens ?? [])
       await excluirProduto(p.id)
       setProdutos((atual) => atual.filter((x) => x.id !== p.id))
       setOfertas((atual) => atual.filter((o) => o.produto_id !== p.id))

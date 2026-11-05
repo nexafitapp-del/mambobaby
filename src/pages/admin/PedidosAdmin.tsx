@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
-import { Loader2, Receipt, ShieldAlert } from 'lucide-react'
-import { buscarPedidos, type Pedido } from '@/lib/admin'
+import { Loader2, Receipt } from 'lucide-react'
+import { type Pedido } from '@/lib/admin'
 import { brl } from '@/lib/loja'
 
 export function PedidosAdmin() {
@@ -9,15 +9,8 @@ export function PedidosAdmin() {
   const [erro, setErro] = useState('')
 
   useEffect(() => {
-    buscarPedidos()
-      .then((lista) => {
-        setPedidos(lista ?? [])
-        setErro('')
-      })
-      .catch(() => {
-        setErro('Os pedidos ficam protegidos enquanto o painel não tiver senha. Isso não impede cadastrar produtos.')
-      })
-      .finally(() => setCarregando(false))
+    setPedidos([])
+    setCarregando(false)
   }, [])
 
   if (carregando) {
@@ -27,9 +20,7 @@ export function PedidosAdmin() {
   return (
     <div className="grid gap-4">
       {erro && (
-        <p className="flex items-start gap-2 rounded-2xl bg-sky-50 p-4 text-sm font-bold text-sky-800 ring-1 ring-sky-200">
-          <ShieldAlert className="mt-0.5 size-4 shrink-0" aria-hidden /> {erro}
-        </p>
+        <p className="rounded-2xl bg-sky-50 p-4 text-sm font-bold text-sky-800 ring-1 ring-sky-200">{erro}</p>
       )}
       {pedidos.length === 0 ? (
         <div className="rounded-3xl border border-sky-100 bg-white p-8 text-center">

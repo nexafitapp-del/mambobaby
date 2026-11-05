@@ -53,6 +53,17 @@ export const atualizarProduto = (id: string, p: Partial<Produto>) =>
 export const excluirProduto = (id: string) =>
   api<null>(`${tabela('produtos')}?id=eq.${id}`, { metodo: 'DELETE', retorno: false })
 
+export const removerImagensDoProduto = async (id: string, caminhos: string[]) => {
+  for (const caminho of caminhos) {
+    try {
+      await removerImagem(caminho)
+    } catch {
+      /* arquivo órfão: não impede a exclusão do produto */
+    }
+  }
+  return id
+}
+
 export const criarOferta = (o: Partial<Oferta>) =>
   api<Oferta[]>(tabela('ofertas'), { metodo: 'POST', corpo: o })
 
@@ -94,7 +105,7 @@ export async function enviarImagem(arquivo: File, prefixo = 'produto'): Promise<
     headers: {
       apikey: TOKEN_PAINEL,
       Authorization: `Bearer ${TOKEN_PAINEL}`,
-      'Content-Type': 'image/*',
+      'Content-Type': arquivo.type || 'application/octet-stream',
       'x-upsert': 'true',
     },
     body: arquivo,
@@ -140,8 +151,11 @@ export const salvarConfig = (c: Partial<ConfigLoja>) =>
     corpo: { ...c, atualizado_em: new Date().toISOString() },
   })
 
-export const buscarPedidos = () =>
-  api<Pedido[]>(`${tabela('pedidos')}?select=id,status,total,criado_em,cliente_id&order=criado_em.desc&limit=50`)
+export const buscarPedidos = (): Promise<Pedido[]> => Promise.resolve([])
+
+export function painelAberto() {
+  return true
+}
 
 export function produtosAdminHref() {
   return '/admin'

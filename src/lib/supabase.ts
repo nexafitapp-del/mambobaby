@@ -39,8 +39,8 @@ export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Pr
     const abortado = (erro as { name?: string } | null)?.name === 'AbortError'
     throw new ErroApi(
       abortado
-        ? 'O servidor de dados demorou para responder. Tente de novo em alguns segundos.'
-        : `Não foi possível abrir a conexão com o banco de dados (${SUPABASE_URL}). Isso costuma ocorrer quando o projeto está pausado no Supabase ou a rede bloqueia o domínio.`,
+        ? 'A operação demorou demais e foi interrompida. Tente de novo.'
+        : 'A operação não pôde ser concluída agora. Tente de novo em alguns segundos.',
     )
   } finally {
     clearTimeout(relogio)

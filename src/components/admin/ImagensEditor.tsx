@@ -33,7 +33,7 @@ export function ImagensEditor({ imagens, onChange, erro }: Props) {
       }
     }
     if (novas.length) onChange([...imagens, ...novas])
-    if (erros.length) setFalha(erros[0])
+    if (erros.length) setFalha(erros.slice(0, 2).join(' · '))
     if (input.current) input.current.value = ''
   }
 

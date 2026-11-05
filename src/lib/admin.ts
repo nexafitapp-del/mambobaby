@@ -10,12 +10,13 @@ const tabela = (nome: string) => `/rest/v1/${nome}`
 
 export type Produto = {
   id: string
+  nome: string
   descricao: string | null
   preco: number
   preco_original: number | null
   ativo: boolean
   imagens: string[] | null
-  ordem?: number
+  ordem: number
   criado_em: string
 }
 
@@ -45,12 +46,13 @@ export const listarOfertas = () =>
 /* Só as colunas que existem na tabela: evita erro de campo desconhecido. */
 function limparProduto(p: Partial<Produto>) {
   const corpo: Record<string, unknown> = {}
-  if (p.nome !== undefined) corpo.nome = p.nome
+  if (p.nome !== undefined) corpo.nome = String(p.nome).trim()
   if (p.descricao !== undefined) corpo.descricao = p.descricao
   if (p.preco !== undefined) corpo.preco = p.preco
   if (p.preco_original !== undefined) corpo.preco_original = p.preco_original
   if (p.ativo !== undefined) corpo.ativo = p.ativo
   if (p.imagens !== undefined) corpo.imagens = (p.imagens ?? []).filter(Boolean)
+  if (p.ordem !== undefined) corpo.ordem = p.ordem
   return corpo
 }
 
@@ -110,17 +112,22 @@ export async function enviarImagem(arquivo: File, prefixo = 'produto'): Promise<
   const seguro = arquivo.name.replace(/\.[^.]+$/, '').replace(/[^a-zA-Z0-9-_]/g, '-').slice(0, 40) || 'foto'
   const caminho = `${prefixo}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}-${seguro}.${ext}`
 
-  const resposta = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
-    method: 'POST',
-    headers: {
-      apikey: SUPABASE_KEY,
-      Authorization: `Bearer ${SUPABASE_KEY}`,
-      'Content-Type': tipo,
-      'cache-control': '3600',
-      'x-upsert': 'true',
-    },
-    body: arquivo,
-  })
+  let resposta: Response
+  try {
+    resposta = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_KEY,
+        Authorization: `Bearer ${SUPABASE_KEY}`,
+        'Content-Type': tipo,
+        'cache-control': 'max-age=3600',
+        'x-upsert': 'true',
+      },
+      body: arquivo,
+    })
+  } catch {
+    throw new Error('A foto não pôde ser enviada agora. Tente de novo em alguns segundos.')
+  }
 
   if (!resposta.ok) {
     const texto = await resposta.text()
@@ -138,10 +145,15 @@ export async function enviarImagem(arquivo: File, prefixo = 'produto'): Promise<
 
 export async function removerImagem(caminho: string) {
   if (/^https?:\/\//i.test(caminho)) return
-  const resposta = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
-    method: 'DELETE',
-    headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
-  })
+  let resposta: Response
+  try {
+    resposta = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${caminho.split('/').map(encodeURIComponent).join('/')}`, {
+      method: 'DELETE',
+      headers: { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}` },
+    })
+  } catch {
+    throw new Error('A foto não pôde ser removida agora. Tente de novo em alguns segundos.')
+  }
   if (!resposta.ok && resposta.status !== 404) {
     throw new Error(`A foto não pôde ser removida (${resposta.status}).`)
   }

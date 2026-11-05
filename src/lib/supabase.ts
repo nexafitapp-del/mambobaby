@@ -23,12 +23,12 @@ function descreverFalhaDeRede(erro: unknown): string {
   const nome = (erro as { name?: string } | null)?.name
   const detalhe = erro instanceof Error ? erro.message : ''
   if (nome === 'AbortError') {
-    return 'O serviço de dados não respondeu em 20 segundos (tempo esgotado).'
+    return 'O serviço de dados demorou demais para responder. Tente de novo.'
   }
   if (/Failed to fetch|NetworkError|load failed|Network request failed/i.test(detalhe)) {
-    return 'O navegador não conseguiu abrir a conexão com o serviço de dados (rede bloqueada ou sem DNS).'
+    return 'A operação não pôde ser concluída agora. Tente de novo em alguns segundos.'
   }
-  return `Falha de rede ao falar com o serviço de dados${detalhe ? ` (${detalhe})` : ''}`
+  return `A operação não pôde ser concluída agora${detalhe ? ` (${detalhe})` : ''}. Tente de novo.`
 }
 
 export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Promise<T> {
@@ -49,6 +49,7 @@ export async function api<T = unknown>(caminho: string, opcoes: Opcoes = {}): Pr
       method: metodo,
       headers,
       signal: controller.signal,
+      cache: 'no-store',
       body: corpo === undefined ? undefined : JSON.stringify(corpo),
     })
   } catch (erro) {
